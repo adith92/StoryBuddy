@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { generateNewStory } from "../lib/gemini";
 import { useAppStore } from "../store";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { LoadingBar } from "./LoadingBar";
 
 export const StoryGenerator: React.FC<{ onViewChange: (view: "dashboard" | "generator" | "reader" | "parents" | "avatar") => void; onStoryReady: () => void }> = ({ onViewChange, onStoryReady }) => {
   const [theme, setTheme] = useState("");
@@ -18,9 +19,14 @@ export const StoryGenerator: React.FC<{ onViewChange: (view: "dashboard" | "gene
       setStories([story, ...stories]);
       setCurrentStory(story);
       onStoryReady();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert(language === "id" ? "Gagal membuat cerita. Coba lagi ya!" : "Failed to generate story. Please try again!");
+      const errorMessage = error?.message || "";
+      if (errorMessage.includes("429") || errorMessage.includes("RESOURCE_EXHAUSTED") || errorMessage.includes("quota")) {
+        alert(language === "id" ? "Quota API habis (Rate limit exceeded). Silakan coba lagi nanti ya!" : "API Quota exceeded. Please try again later!");
+      } else {
+        alert(language === "id" ? "Gagal membuat cerita. Coba lagi ya!" : "Failed to generate story. Please try again!");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -119,20 +125,17 @@ export const StoryGenerator: React.FC<{ onViewChange: (view: "dashboard" | "gene
           </div>
         </div>
 
-        <button
-          onClick={handleGenerate}
-          disabled={isLoading || !theme || !character}
-          className={`w-full py-6 rounded-3xl font-black text-2xl shadow-xl transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3 ${isLoading || !theme || !character ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'}`}
-        >
-          {isLoading ? (
-            <div className="flex items-center gap-3">
-              <Loader2 className="animate-spin text-white" />
-              {t.generating}
-            </div>
-          ) : (
-            <>{t.button}</>
-          )}
-        </button>
+        {isLoading ? (
+          <LoadingBar message={t.generating} />
+        ) : (
+          <button
+            onClick={handleGenerate}
+            disabled={!theme || !character}
+            className={`w-full py-6 rounded-3xl font-black text-2xl shadow-xl transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3 ${!theme || !character ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'}`}
+          >
+            {t.button}
+          </button>
+        )}
       </div>
     </div>
   );

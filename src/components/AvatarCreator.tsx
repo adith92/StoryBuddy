@@ -28,9 +28,14 @@ export const AvatarCreator: React.FC<{ onViewChange: (view: "dashboard" | "paren
           const blob = await (await fetch(cartoonUrl)).blob();
           await set("custom-avatar", blob);
           setAvatar({ customImageData: "true" });
-        } catch (err) {
+        } catch (err: any) {
           console.error(err);
-          alert(language === "id" ? "Gagal membuat avatar dari foto." : "Failed to create avatar from photo.");
+          const errorMessage = err?.message || "";
+          if (errorMessage.includes("429") || errorMessage.includes("RESOURCE_EXHAUSTED") || errorMessage.includes("quota")) {
+            alert(language === "id" ? "Quota API habis (Rate limit exceeded). Silakan coba lagi nanti ya!" : "API Quota exceeded. Please try again later!");
+          } else {
+            alert(language === "id" ? "Gagal membuat avatar dari foto." : "Failed to create avatar from photo.");
+          }
         } finally {
           setIsUploading(false);
         }

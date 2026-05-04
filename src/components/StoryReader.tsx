@@ -6,6 +6,7 @@ import confetti from "canvas-confetti";
 import { generateNextPage } from "../lib/gemini";
 import { motion, AnimatePresence } from "motion/react";
 import { OfflineImage } from "./OfflineImage";
+import { LoadingBar } from "./LoadingBar";
 
 export const StoryReader: React.FC<{ onViewChange: (view: "dashboard" | "generator" | "reader") => void }> = ({ onViewChange }) => {
   const { currentStory, currentPageIndex, setCurrentPageIndex, updateStory, addPoints, addRecording, points, avatar, language, setLanguage } = useAppStore();
@@ -44,9 +45,14 @@ export const StoryReader: React.FC<{ onViewChange: (view: "dashboard" | "generat
         pages: [...currentStory.pages, nextPage]
       });
       setCurrentPageIndex(currentStory.pages.length); 
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert(language === "id" ? "Gagal melanjutkan cerita. Coba lagi ya!" : "Failed to continue. Try again!");
+      const errorMessage = e?.message || "";
+      if (errorMessage.includes("429") || errorMessage.includes("RESOURCE_EXHAUSTED") || errorMessage.includes("quota")) {
+        alert(language === "id" ? "Quota API habis (Rate limit exceeded). Silakan coba lagi nanti ya!" : "API Quota exceeded. Please try again later!");
+      } else {
+        alert(language === "id" ? "Gagal melanjutkan cerita. Coba lagi ya!" : "Failed to continue. Try again!");
+      }
     } finally {
       setIsGeneratingNext(false);
     }
@@ -150,9 +156,8 @@ export const StoryReader: React.FC<{ onViewChange: (view: "dashboard" | "generat
       <main className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-6 min-h-0">
         <div className="md:col-span-8 bg-white rounded-[48px] shadow-xl overflow-hidden border-8 border-white relative min-h-[300px]">
            {isGeneratingNext ? (
-             <div className="absolute inset-0 bg-blue-600/10 flex flex-col items-center justify-center">
-                <Loader2 className="w-16 h-16 animate-spin text-blue-600 mb-4" />
-                <h2 className="text-2xl font-black text-blue-600">{t.writing}</h2>
+             <div className="absolute inset-0 bg-blue-50/90 backdrop-blur-sm flex flex-col items-center justify-center p-8 z-10">
+                <LoadingBar message={t.writing} />
              </div>
            ) : (
              <OfflineImage 
