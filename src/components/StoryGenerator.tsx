@@ -1,91 +1,138 @@
 import React, { useState } from "react";
 import { generateNewStory } from "../lib/gemini";
 import { useAppStore } from "../store";
-import { ArrowLeft, Wand2, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 
-export const StoryGenerator: React.FC<{ onViewChange: (view: "dashboard") => void, onStoryReady: () => void }> = ({ onViewChange, onStoryReady }) => {
-  const [theme, setTheme] = useState("Space Adventure");
-  const [characterName, setCharacterName] = useState("A brave little cat");
+export const StoryGenerator: React.FC<{ onViewChange: (view: "dashboard" | "generator" | "reader" | "parents" | "avatar") => void; onStoryReady: () => void }> = ({ onViewChange, onStoryReady }) => {
+  const [theme, setTheme] = useState("");
+  const [character, setCharacter] = useState("");
   const [isInteractive, setIsInteractive] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
-  const { setStories, stories, setCurrentStory, avatar } = useAppStore();
+  const { setStories, stories, setCurrentStory, avatar, language } = useAppStore();
 
   const handleGenerate = async () => {
+    if (!theme || !character) return;
     setIsLoading(true);
     try {
-      const finalName = characterName || "A creative child";
-      const newStory = await generateNewStory(theme || "a fun adventure", finalName, isInteractive, avatar);
-      setStories([newStory, ...stories]);
-      setCurrentStory(newStory);
+      const story = await generateNewStory(theme, character, isInteractive, avatar, language);
+      setStories([story, ...stories]);
+      setCurrentStory(story);
       onStoryReady();
-    } catch (err) {
-      alert("Oops! The magic wand fizzled. Try again!");
+    } catch (error) {
+      console.error(error);
+      alert(language === "id" ? "Gagal membuat cerita. Coba lagi ya!" : "Failed to generate story. Please try again!");
+    } finally {
       setIsLoading(false);
     }
   };
 
+  const t = {
+    id: {
+      back: "Kembali",
+      title: "Petualangan Apa Hari Ini?",
+      theme: "Pilih Tema",
+      character: "Siapa Tokohnya?",
+      adventureType: "Jenis Petualangan",
+      nonInteractive: "📖 Cerita Klasik",
+      interactive: "🎮 Petualangan Interaktif",
+      interactiveDesc: "Kamu bisa membuat pilihan!",
+      button: "SIHIRKAN CERITA! ✨",
+      generating: "AI sedang menulis...",
+      themes: ["Luar Angkasa 🚀", "Hutan Ajaib 🌳", "Bawah Laut 🌊", "Negeri Permen 🍭", "Dunia Dino 🦕", "Kastil Awan ☁️"],
+      characters: ["Anak Berani 🧒", "Robot Lucu 🤖", "Naga Baik 🐉", "Kucing Pintar 🐱", "Peri Kecil 🧚", "Astronot 👨‍🚀"]
+    },
+    en: {
+      back: "Back",
+      title: "Choose Your Adventure!",
+      theme: "Pick a Theme",
+      character: "Who's the Hero?",
+      adventureType: "Adventure Type",
+      nonInteractive: "📖 Classic Story",
+      interactive: "🎮 Interactive Story",
+      interactiveDesc: "You make the choices!",
+      button: "MAGIC MY STORY! ✨",
+      generating: "AI is writing...",
+      themes: ["Outer Space 🚀", "Magic Forest 🌳", "Underwater 🌊", "Candy Land 🍭", "Dino World 🦕", "Cloud Castle ☁️"],
+      characters: ["Brave Kid 🧒", "Cute Robot 🤖", "Friendly Dragon 🐉", "Smart Cat 🐱", "Small Fairy 🧚", "Astronaut 👨‍🚀"]
+    }
+  }[language];
+
   return (
-    <div className="max-w-2xl mx-auto p-4 sm:p-8 flex flex-col justify-center min-h-full">
-      <button onClick={() => onViewChange("dashboard")} className="self-start mb-8 text-blue-600 hover:bg-blue-100 rounded-full px-6 py-2 font-bold font-sans flex items-center shadow-sm border-2 border-blue-200 transition-colors">
-        <ArrowLeft className="mr-2" size={20} /> Back to Home
-      </button>
-      
-      <div className="bg-white p-8 sm:p-12 rounded-[48px] shadow-xl border-8 border-white">
-        <h2 className="text-4xl sm:text-5xl font-black text-blue-950 mb-2 flex items-center gap-3 tracking-tight">
-          <Wand2 className="text-orange-500 w-12 h-12" />
-          Make Magic
-        </h2>
-        <p className="text-blue-700 mb-10 font-bold text-xl">Tell the AI what kind of story you want to hear!</p>
-        
+    <div className="max-w-4xl mx-auto p-4 sm:p-8 flex flex-col min-h-screen">
+      <header className="mb-8">
+        <button onClick={() => onViewChange("dashboard")} className="text-blue-600 hover:bg-blue-100 rounded-full px-6 py-2 font-bold flex items-center shadow-sm border-2 border-blue-200 transition-colors bg-white">
+           <ArrowLeft className="mr-2" size={20} /> {t.back}
+        </button>
+      </header>
+
+      <div className="bg-white rounded-[40px] p-8 shadow-xl border-8 border-white space-y-10">
+        <h2 className="text-4xl font-black text-blue-950 text-center tracking-tight">{t.title}</h2>
+
         <div className="space-y-8">
           <div>
-            <label className="block text-xl font-black text-blue-900 mb-3">Who is the main character?</label>
-            <input 
-              type="text" 
-              value={characterName}
-              onChange={(e) => setCharacterName(e.target.value)}
-              className="w-full text-2xl px-6 py-5 rounded-3xl bg-yellow-50 border-4 border-yellow-200 focus:border-orange-400 focus:ring-0 outline-none transition-all font-bold text-blue-950 placeholder-blue-300"
-              placeholder="A brave little cat..."
-            />
+            <label className="block text-xl font-black text-blue-900 mb-4">{t.theme}</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {t.themes.map((th) => (
+                <button
+                  key={th}
+                  onClick={() => setTheme(th)}
+                  className={`py-4 px-2 rounded-2xl font-bold text-sm transition-all border-4 ${theme === th ? 'bg-blue-100 border-blue-400 text-blue-900 scale-105 shadow-md' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-blue-200'}`}
+                >
+                  {th}
+                </button>
+              ))}
+            </div>
           </div>
-          
+
           <div>
-            <label className="block text-xl font-black text-blue-900 mb-3">What is the theme or setting?</label>
-            <input 
-              type="text" 
-              value={theme}
-              onChange={(e) => setTheme(e.target.value)}
-              className="w-full text-2xl px-6 py-5 rounded-3xl bg-yellow-50 border-4 border-yellow-200 focus:border-orange-400 focus:ring-0 outline-none transition-all font-bold text-blue-950 placeholder-blue-300"
-              placeholder="Magic forest..."
-            />
+            <label className="block text-xl font-black text-blue-900 mb-4">{t.character}</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {t.characters.map((ch) => (
+                <button
+                  key={ch}
+                  onClick={() => setCharacter(ch)}
+                  className={`py-4 px-2 rounded-2xl font-bold text-sm transition-all border-4 ${character === ch ? 'bg-orange-100 border-orange-400 text-orange-900 scale-105 shadow-md' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-orange-200'}`}
+                >
+                  {ch}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex items-center gap-4 p-6 bg-purple-50 rounded-3xl border-4 border-purple-200 cursor-pointer hover:bg-purple-100 transition-colors" onClick={() => setIsInteractive(!isInteractive)}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center border-4 ${isInteractive ? 'bg-purple-500 border-purple-600 shadow-inner' : 'bg-white border-purple-300'}`}>
-               {isInteractive && <Sparkles className="w-5 h-5 text-white" />}
-            </div>
-            <div>
-              <h3 className="font-black text-purple-900 text-xl">Choose Your Own Adventure</h3>
-              <p className="text-purple-700 font-bold">You decide what happens next!</p>
+          <div>
+            <label className="block text-xl font-black text-blue-900 mb-4">{t.adventureType}</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+               <div 
+                 onClick={() => setIsInteractive(false)}
+                 className={`p-6 rounded-[32px] border-4 cursor-pointer transition-all ${!isInteractive ? 'bg-green-50 border-green-400 shadow-md' : 'bg-white border-slate-100'}`}
+               >
+                 <div className="font-black text-2xl text-green-700">{t.nonInteractive}</div>
+               </div>
+               <div 
+                 onClick={() => setIsInteractive(true)}
+                 className={`p-6 rounded-[32px] border-4 cursor-pointer transition-all ${isInteractive ? 'bg-purple-50 border-purple-400 shadow-md' : 'bg-white border-slate-100'}`}
+               >
+                 <div className="font-black text-2xl text-purple-700">{t.interactive}</div>
+                 <div className="text-purple-600 text-sm font-bold opacity-70">{t.interactiveDesc}</div>
+               </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-12">
-          <button 
-            disabled={isLoading || !theme || !characterName}
-            onClick={handleGenerate}
-            className="w-full h-20 text-3xl font-black bg-blue-600 hover:bg-blue-700 text-white rounded-[32px] shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-4 animate-spin h-10 w-10" /> 
-                WRITING...
-              </>
-            ) : "GENERATE STORY!"}
-          </button>
-        </div>
+        <button
+          onClick={handleGenerate}
+          disabled={isLoading || !theme || !character}
+          className={`w-full py-6 rounded-3xl font-black text-2xl shadow-xl transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3 ${isLoading || !theme || !character ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'}`}
+        >
+          {isLoading ? (
+            <div className="flex items-center gap-3">
+              <Loader2 className="animate-spin text-white" />
+              {t.generating}
+            </div>
+          ) : (
+            <>{t.button}</>
+          )}
+        </button>
       </div>
     </div>
   );

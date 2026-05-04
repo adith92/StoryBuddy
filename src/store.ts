@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export interface Avatar {
   hairStyle: string;
@@ -21,6 +22,7 @@ export interface Story {
   genre: string;
   pages: StoryPage[];
   isInteractive: boolean; // True if it's a 'Choose Your Own Adventure' story
+  isOffline?: boolean;
 }
 
 export interface Badge {
@@ -44,6 +46,8 @@ export interface VoiceSettings {
   useCustomVoice: boolean;
 }
 
+export type AppLanguage = "id" | "en";
+
 interface AppState {
   stories: Story[];
   currentStory: Story | null;
@@ -54,6 +58,7 @@ interface AppState {
   parentPin: string | null;
   avatar: Avatar;
   voiceSettings: VoiceSettings;
+  language: AppLanguage;
 
   setStories: (stories: Story[]) => void;
   updateStory: (storyId: string, updatedStory: Partial<Story>) => void;
@@ -65,48 +70,66 @@ interface AppState {
   setParentPin: (pin: string | null) => void;
   setAvatar: (avatar: Partial<Avatar>) => void;
   setVoiceSettings: (settings: Partial<VoiceSettings>) => void;
+  setLanguage: (lang: AppLanguage) => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  stories: [],
-  currentStory: null,
-  currentPageIndex: 0,
-  badges: [],
-  points: 0,
-  recordings: [],
-  parentPin: null,
-  avatar: {
-    hairStyle: "short",
-    hairColor: "brown",
-    clothing: "superhero cape",
-    accessory: "none",
-    skinTone: "medium",
-  },
-  voiceSettings: {
-    elevenLabsApiKey: "",
-    customVoiceId: "",
-    useCustomVoice: false,
-  },
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      stories: [],
+      currentStory: null,
+      currentPageIndex: 0,
+      badges: [],
+      points: 0,
+      recordings: [],
+      parentPin: null,
+      language: "id", // Default to Indonesian
+      avatar: {
+        hairStyle: "short",
+        hairColor: "brown",
+        clothing: "superhero cape",
+        accessory: "none",
+        skinTone: "medium",
+      },
+      voiceSettings: {
+        elevenLabsApiKey: "",
+        customVoiceId: "",
+        useCustomVoice: false,
+      },
 
-  setStories: (stories) => set({ stories }),
-  updateStory: (storyId, updated) => set((state) => {
-    const newStories = state.stories.map(s => s.id === storyId ? { ...s, ...updated } : s);
-    const newCurrent = state.currentStory?.id === storyId ? { ...state.currentStory, ...updated } : state.currentStory;
-    return { stories: newStories, currentStory: newCurrent as Story | null };
-  }),
-  setCurrentStory: (story) => set({ currentStory: story, currentPageIndex: 0 }),
-  setCurrentPageIndex: (index) => set({ currentPageIndex: index }),
-  addRecording: (recording) =>
-    set((state) => ({ recordings: [...state.recordings, recording] })),
-  addPoints: (points) => set((state) => ({ points: state.points + points })),
-  unlockBadge: (badgeId) =>
-    set((state) => {
-      if (!state.badges.includes(badgeId)) {
-        return { badges: [...state.badges, badgeId] };
-      }
-      return state;
+      setStories: (stories) => set({ stories }),
+      updateStory: (storyId, updated) => set((state) => {
+        const newStories = state.stories.map(s => s.id === storyId ? { ...s, ...updated } : s);
+        const newCurrent = state.currentStory?.id === storyId ? { ...state.currentStory, ...updated } : state.currentStory;
+        return { stories: newStories, currentStory: newCurrent as Story | null };
+      }),
+      setCurrentStory: (story) => set({ currentStory: story, currentPageIndex: 0 }),
+      setCurrentPageIndex: (index) => set({ currentPageIndex: index }),
+      addRecording: (recording) =>
+        set((state) => ({ recordings: [...state.recordings, recording] })),
+      addPoints: (points) => set((state) => ({ points: state.points + points })),
+      unlockBadge: (badgeId) =>
+        set((state) => {
+          if (!state.badges.includes(badgeId)) {
+            return { badges: [...state.badges, badgeId] };
+          }
+          return state;
+        }),
+      setParentPin: (pin) => set({ parentPin: pin }),
+      setAvatar: (avatar) => set((state) => ({ avatar: { ...state.avatar, ...avatar } })),
+      setVoiceSettings: (settings) => set((state) => ({ voiceSettings: { ...state.voiceSettings, ...settings } })),
+      setLanguage: (language) => set({ language }),
     }),
-  setParentPin: (pin) => set({ parentPin: pin }),
-  setAvatar: (avatar) => set((state) => ({ avatar: { ...state.avatar, ...avatar } })),
-  setVoiceSettings: (settings) => set((state) => ({ voiceSettings: { ...state.voiceSettings, ...settings } })),
-}));
+    {
+      name: "story-buddy-storage",
+      partialize: (state) => ({ 
+        stories: state.stories, 
+        points: state.points, 
+        avatar: state.avatar, 
+        language: state.language, 
+        voiceSettings: state.voiceSettings, 
+        parentPin: state.parentPin 
+      }),
+    }
+  )
+);
