@@ -156,7 +156,8 @@ export const StoryReader: React.FC<{ onViewChange: (view: "dashboard" | "generat
              </div>
            ) : (
              <OfflineImage 
-               src={`https://image.pollinations.ai/prompt/${encodeURIComponent(page.illustrationPrompt)}?width=800&height=600&nologo=true&seed=${page.id}`} 
+               cacheKey={`page-${page.id}`}
+               prompt={page.illustrationPrompt}
                alt="illustration"
                className="w-full h-full object-cover"
              />

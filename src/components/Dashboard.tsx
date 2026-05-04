@@ -12,11 +12,6 @@ export const Dashboard: React.FC<{ onViewChange: (view: "dashboard" | "generator
 
   const filteredStories = stories.filter(s => filter === "all" || s.isOffline);
 
-  const getAvatarUrl = () => {
-    const avatarPrompt = `cute child ${avatar.skinTone} skin ${avatar.hairStyle} ${avatar.hairColor} hair ${avatar.clothing} avatar icon 2d vector art bright`;
-    return `https://image.pollinations.ai/prompt/${encodeURIComponent(avatarPrompt)}?width=100&height=100&nologo=true&seed=avatar`;
-  };
-
   const handleDownload = async (story: Story) => {
     setDownloadingId(story.id);
     try {
@@ -76,7 +71,7 @@ export const Dashboard: React.FC<{ onViewChange: (view: "dashboard" | "generator
             onClick={() => onViewChange("avatar")}
             className="w-16 h-16 bg-orange-400 rounded-2xl flex items-center justify-center text-white text-3xl shadow-lg font-bold cursor-pointer hover:scale-105 active:scale-95 transition-transform overflow-hidden border-4 border-white"
           >
-            <OfflineImage src={getAvatarUrl()} alt="Avatar" className="w-full h-full object-cover" />
+            <OfflineImage cacheKey="custom-avatar" prompt={`cute child ${avatar.skinTone} skin ${avatar.hairStyle} ${avatar.hairColor} hair ${avatar.clothing} avatar icon 2d vector art bright`} alt="Avatar" className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="text-3xl font-black text-blue-900 tracking-tight">StoryBuddy</h1>
@@ -175,7 +170,7 @@ export const Dashboard: React.FC<{ onViewChange: (view: "dashboard" | "generator
                     )}
                   </div>
                   <div className="h-48 bg-blue-50 relative overflow-hidden flex items-center justify-center">
-                     <OfflineImage src={`https://image.pollinations.ai/prompt/${encodeURIComponent(story.title + " children story book cover vibrant 2d vector vector art")}?width=400&height=300&nologo=true&seed=${story.id}`} alt={story.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 mix-blend-multiply opacity-80" />
+                     <OfflineImage cacheKey={`cover-${story.id}`} prompt={story.title + " children story book cover vibrant 2d vector vector art"} alt={story.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 mix-blend-multiply opacity-80" />
                      <div className="absolute inset-x-0 bottom-0 py-6 px-4 bg-gradient-to-t from-blue-900/90 to-transparent flex flex-col justify-end h-full">
                        <span className="bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full w-fit mb-2 shadow-sm">{story.genre}</span>
                      </div>

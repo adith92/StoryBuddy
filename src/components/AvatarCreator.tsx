@@ -1,17 +1,44 @@
-import React from "react";
+import React, { useState, useRef } from "react";
 import { useAppStore } from "../store";
-import { ArrowLeft, User, Sparkles } from "lucide-react";
+import { ArrowLeft, User, Sparkles, Camera, Loader2 } from "lucide-react";
+import { cartoonifyPhoto } from "../lib/gemini";
+import { set } from "idb-keyval";
+import { OfflineImage } from "./OfflineImage";
 
 export const AvatarCreator: React.FC<{ onViewChange: (view: "dashboard" | "parentPortal") => void }> = ({ onViewChange }) => {
   const { avatar, setAvatar, language } = useAppStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleUpdate = (key: keyof typeof avatar, value: string) => {
-    setAvatar({ [key]: value });
+    setAvatar({ [key]: value, customImageData: undefined }); // clear custom if manually changed
   };
 
-  const getImageUrl = () => {
-    const prompt = `A cute child with ${avatar.skinTone} skin tone, ${avatar.hairStyle} ${avatar.hairColor} hair, wearing a ${avatar.clothing}, accessory: ${avatar.accessory}. 2d vector art bright child friendly simple portrait.`;
-    return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=400&height=400&nologo=true&seed=avatar`;
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64Data = event.target?.result as string;
+        try {
+          const cartoonUrl = await cartoonifyPhoto(base64Data, file.type);
+          const blob = await (await fetch(cartoonUrl)).blob();
+          await set("custom-avatar", blob);
+          setAvatar({ customImageData: "true" });
+        } catch (err) {
+          console.error(err);
+          alert(language === "id" ? "Gagal membuat avatar dari foto." : "Failed to create avatar from photo.");
+        } finally {
+          setIsUploading(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (e) {
+      setIsUploading(false);
+    }
   };
 
   const t = {
@@ -64,11 +91,23 @@ export const AvatarCreator: React.FC<{ onViewChange: (view: "dashboard" | "paren
         <div className="bg-white rounded-[48px] p-8 shadow-xl border-8 border-white flex flex-col items-center justify-center relative overflow-hidden">
              <div className="absolute inset-0 bg-gradient-to-br from-green-200 to-blue-200 opacity-50"></div>
              <div className="relative z-10 w-64 h-64 bg-white rounded-full p-4 shadow-2xl mb-6">
-                <img src={getImageUrl()} alt="Avatar" className="w-full h-full object-cover rounded-full border-4 border-blue-100" />
+                {isUploading ? (
+                  <div className="flex bg-slate-100 rounded-full w-full h-full items-center justify-center">
+                    <Loader2 className="animate-spin text-blue-500" size={48} />
+                  </div>
+                ) : (
+                  <OfflineImage cacheKey="custom-avatar" prompt={avatar.customImageData ? undefined : `A cute child with ${avatar.skinTone} skin tone, ${avatar.hairStyle} ${avatar.hairColor} hair, wearing a ${avatar.clothing}, accessory: ${avatar.accessory}. 2d vector art bright child friendly simple portrait.`} alt="Avatar" className="w-full h-full object-cover rounded-full border-4 border-blue-100" />
+                )}
              </div>
-             <h2 className="text-3xl font-black text-blue-900 relative z-10 flex items-center gap-2">
+             <h2 className="text-3xl font-black text-blue-900 relative z-10 flex items-center gap-2 mb-4">
                 <Sparkles className="text-yellow-400" /> {t.hero} <Sparkles className="text-yellow-400" />
              </h2>
+
+             <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+             <button onClick={() => fileInputRef.current?.click()} className="relative z-10 bg-purple-500 hover:bg-purple-600 active:scale-95 transition-all text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg">
+                <Camera size={20} />
+                {language === "id" ? "Gunakan Foto Asli" : "Use Real Photo"}
+             </button>
         </div>
 
         <div className="bg-white rounded-[40px] p-8 shadow-lg space-y-6">

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useAppStore } from "../store";
+import { useAppStore, clearAllDataAndReload } from "../store";
 import { ArrowLeft, Shield, BarChart3, Lock, PlayCircle } from "lucide-react";
 
 export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void }> = ({ onViewChange }) => {
@@ -25,6 +25,7 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
       progress: "Perkembangan",
       recordings: "Rekaman Suara",
       voice: "Suara AI",
+      settings: "Pengaturan",
       totalRead: "Cerita Yang Dibaca",
       totalStars: "Total Bintang",
       voiceSettings: "Pengaturan Kloning Suara",
@@ -32,7 +33,9 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
       useCustom: "Gunakan Suara Kustom",
       toggleDesc: "Pilih antara suara HP atau ElevenLabs",
       noRecordings: "Belum ada rekaman. Yuk suruh si kecil membaca!",
-      storyList: "Rekaman Suara Anak"
+      storyList: "Rekaman Suara Anak",
+      clearData: "Hapus Semua Data",
+      clearDataDesc: "Hapus semua cerita, profil, dan mulai dari awal."
     },
     en: {
       onlyParents: "Parents Only!",
@@ -49,6 +52,7 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
       progress: "Progress",
       recordings: "Recordings",
       voice: "AI Voice",
+      settings: "Settings",
       totalRead: "Total Stories Read",
       totalStars: "Total Stars Earned",
       voiceSettings: "Voice Cloning Settings",
@@ -56,7 +60,9 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
       useCustom: "Use Custom Voice",
       toggleDesc: "Toggle between Web Speech API and ElevenLabs",
       noRecordings: "No recordings yet. Encourage them to read aloud!",
-      storyList: "Child's Voice Recordings"
+      storyList: "Child's Voice Recordings",
+      clearData: "Clear All Data",
+      clearDataDesc: "Delete all stories, profiles, and start fresh."
     }
   }[language];
 
@@ -137,10 +143,11 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
       )}
 
       <div className="w-full">
-        <div className="grid w-full grid-cols-3 h-14 rounded-2xl bg-slate-200 p-1 mb-8">
-          <button onClick={() => setActiveTab("progress")} className={`rounded-xl font-bold text-lg ${activeTab === "progress" ? "bg-white text-indigo-600 shadow" : "text-slate-500 hover:text-slate-700"}`}>{t.progress}</button>
-          <button onClick={() => setActiveTab("recordings")} className={`rounded-xl font-bold text-lg ${activeTab === "recordings" ? "bg-white text-indigo-600 shadow" : "text-slate-500 hover:text-slate-700"}`}>{t.recordings}</button>
-          <button onClick={() => setActiveTab("voice")} className={`rounded-xl font-bold text-lg ${activeTab === "voice" ? "bg-white text-indigo-600 shadow" : "text-slate-500 hover:text-slate-700"}`}>{t.voice}</button>
+        <div className="grid w-full grid-cols-4 h-14 rounded-2xl bg-slate-200 p-1 mb-8">
+          <button onClick={() => setActiveTab("progress")} className={`rounded-xl font-bold text-sm sm:text-lg ${activeTab === "progress" ? "bg-white text-indigo-600 shadow" : "text-slate-500 hover:text-slate-700"}`}>{t.progress}</button>
+          <button onClick={() => setActiveTab("recordings")} className={`rounded-xl font-bold text-sm sm:text-lg ${activeTab === "recordings" ? "bg-white text-indigo-600 shadow" : "text-slate-500 hover:text-slate-700"}`}>{t.recordings}</button>
+          <button onClick={() => setActiveTab("voice")} className={`rounded-xl font-bold text-sm sm:text-lg ${activeTab === "voice" ? "bg-white text-indigo-600 shadow" : "text-slate-500 hover:text-slate-700"}`}>{t.voice}</button>
+          <button onClick={() => setActiveTab("settings")} className={`rounded-xl font-bold text-sm sm:text-lg ${activeTab === "settings" ? "bg-white text-indigo-600 shadow" : "text-slate-500 hover:text-slate-700"}`}>{t.settings}</button>
         </div>
         
         {activeTab === "progress" && (
@@ -228,6 +235,26 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
                   className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-indigo-500"
                   placeholder="e.g. pNInz6obpgDQGcFmaJcg"
                 />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "settings" && (
+          <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+            <h3 className="text-xl font-bold text-slate-800 mb-6">{t.settings}</h3>
+            
+            <div className="space-y-6 max-w-lg">
+              <div className="p-4 border-2 border-red-100 bg-red-50 rounded-2xl relative overflow-hidden group">
+                <div className="relative z-10 flex flex-col items-start gap-4">
+                  <div>
+                    <h4 className="font-bold text-red-700">{t.clearData}</h4>
+                    <p className="text-sm text-red-600 opacity-90">{t.clearDataDesc}</p>
+                  </div>
+                  <button onClick={clearAllDataAndReload} className="bg-red-500 hover:bg-red-600 text-white font-bold px-6 py-2 rounded-xl transition-colors shadow-sm">
+                    {t.clearData}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

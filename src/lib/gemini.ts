@@ -3,6 +3,51 @@ import { Story, StoryPage, Avatar, AppLanguage } from "../store";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+export async function generateImage(prompt: string): Promise<string> {
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash-image',
+    contents: {
+      parts: [
+        { text: prompt + " Bright, colorful, 2D vector children's book illustration style." }
+      ]
+    }
+  });
+
+  for (const part of response.candidates?.[0]?.content?.parts || []) {
+    if (part.inlineData) {
+      return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+    }
+  }
+  throw new Error("No image generated.");
+}
+
+export async function cartoonifyPhoto(fileData: string, mimeType: string): Promise<string> {
+  // Convert real photo to cartoon style avatar based on user's child's photo
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash-image',
+    contents: {
+      parts: [
+        {
+          inlineData: {
+            data: fileData.split(',')[1] || fileData,
+            mimeType: mimeType,
+          },
+        },
+        {
+          text: 'Turn this photo into a cute, bright, colorful 2D vector cartoon avatar suitable for a children\'s book main character. White background.',
+        },
+      ],
+    },
+  });
+
+  for (const part of response.candidates?.[0]?.content?.parts || []) {
+    if (part.inlineData) {
+      return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+    }
+  }
+  throw new Error("No cartoon image generated.");
+}
+
 export async function generateNewStory(theme: string, character: string, isInteractive: boolean, avatar: Avatar, language: AppLanguage): Promise<Story> {
   const languageName = language === "id" ? "Indonesian (Bahasa Indonesia)" : "English";
   const avatarDesc = `The main character looks like this: ${avatar.skinTone} skin tone, ${avatar.hairStyle} ${avatar.hairColor} hair, wearing a ${avatar.clothing}. Accessory: ${avatar.accessory}.`;

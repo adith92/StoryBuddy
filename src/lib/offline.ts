@@ -1,57 +1,80 @@
 import { useEffect, useState } from 'react';
 import { get, set, del } from 'idb-keyval';
 import { Story } from '../store';
+import { generateImage } from './gemini';
 
 export async function downloadStoryImages(story: Story, onProgress?: (progress: number) => void): Promise<void> {
-  const imageUrls = story.pages.map(p => `https://image.pollinations.ai/prompt/${encodeURIComponent(p.illustrationPrompt)}?width=800&height=600&nologo=true&seed=${p.id}`);
-  
-  const coverUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(story.title + " children story book cover vibrant 2d vector vector art")}?width=400&height=300&nologo=true&seed=${story.id}`;
-  
-  imageUrls.push(coverUrl);
+  const tasks = [];
+  tasks.push(async () => {
+    const key = `cover-${story.id}`;
+    if (!(await get(key))) {
+      try {
+        const dataUrl = await generateImage(story.title + " children story book cover");
+        await set(key, await (await fetch(dataUrl)).blob());
+      } catch (e) { console.error(e); }
+    }
+  });
+
+  for (const p of story.pages) {
+    tasks.push(async () => {
+      const key = `page-${p.id}`;
+      if (!(await get(key))) {
+        try {
+          const dataUrl = await generateImage(p.illustrationPrompt);
+          await set(key, await (await fetch(dataUrl)).blob());
+        } catch (e) { console.error(e); }
+      }
+    });
+  }
 
   let completed = 0;
-  for (const url of imageUrls) {
-    try {
-      const response = await fetch(url);
-      if (response.ok) {
-        const blob = await response.blob();
-        await set(url, blob);
-      }
-    } catch (e) {
-      console.error("Failed to download image", url, e);
-    }
+  for (const task of tasks) {
+    await task();
     completed++;
-    onProgress?.(completed / imageUrls.length);
+    onProgress?.(completed / tasks.length);
   }
 }
 
 export async function removeStoryImages(story: Story): Promise<void> {
-  const imageUrls = story.pages.map(p => `https://image.pollinations.ai/prompt/${encodeURIComponent(p.illustrationPrompt)}?width=800&height=600&nologo=true&seed=${p.id}`);
-  const coverUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(story.title + " children story book cover vibrant 2d vector vector art")}?width=400&height=300&nologo=true&seed=${story.id}`;
-  
-  imageUrls.push(coverUrl);
-  
-  for (const url of imageUrls) {
-    await del(url);
+  await del(`cover-${story.id}`);
+  for (const p of story.pages) {
+    await del(`page-${p.id}`);
   }
 }
 
-export function useOfflineImage(url: string) {
-  const [src, setSrc] = useState<string>(url);
+export function useOfflineImage(cacheKey: string, prompt?: string) {
+  const [src, setSrc] = useState<string>("");
 
   useEffect(() => {
     let objectUrl: string | null = null;
     let isMounted = true;
     
-    get<Blob>(url).then((blob) => {
+    const loadImage = async () => {
+      let blob = await get<Blob>(cacheKey);
+      
+      if (!blob && prompt) {
+        // Try to generate on the fly if not found
+        try {
+          const dataUrl = await generateImage(prompt);
+          blob = await (await fetch(dataUrl)).blob();
+          await set(cacheKey, blob);
+        } catch (e) {
+          console.error("Failed to generate image on the fly", e);
+          // Fallback to pollinations if gemini fails
+          blob = await (await fetch(`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=600&nologo=true&seed=${cacheKey}`)).blob();
+          await set(cacheKey, blob);
+        }
+      }
+
       if (!isMounted) return;
+
       if (blob) {
         objectUrl = URL.createObjectURL(blob);
         setSrc(objectUrl);
-      } else {
-        setSrc(url);
       }
-    });
+    };
+
+    loadImage();
 
     return () => {
       isMounted = false;
@@ -59,7 +82,8 @@ export function useOfflineImage(url: string) {
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [url]);
+  }, [cacheKey, prompt]);
 
   return src;
 }
+

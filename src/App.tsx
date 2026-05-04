@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAppStore } from "./store";
 import { AudioProvider } from "./lib/audio";
 import { Dashboard } from "./components/Dashboard";
@@ -15,6 +15,16 @@ import { AvatarCreator } from "./components/AvatarCreator";
 export default function App() {
   const [view, setView] = useState<"dashboard" | "generator" | "reader" | "parents" | "avatar" | "parentPortal">("dashboard");
   const { currentStory } = useAppStore();
+
+  useEffect(() => {
+    const splash = document.getElementById('splash');
+    if (splash) {
+      setTimeout(() => {
+        splash.style.opacity = '0';
+        setTimeout(() => splash.remove(), 500);
+      }, 800); // Give the loading bar a bit of time
+    }
+  }, []);
 
   const handleOpenReader = () => {
     setView("reader");

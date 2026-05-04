@@ -3,9 +3,48 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <title>StoryBuddy Interactive</title>
+    <style>
+      #splash {
+        position: fixed;
+        inset: 0;
+        background: #fffbeb;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        font-family: sans-serif;
+        transition: opacity 0.5s ease-out;
+      }
+      .loading-bar {
+        width: 200px;
+        height: 12px;
+        background: #e0f2fe;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .loading-fill {
+        width: 0%;
+        height: 100%;
+        background: #3b82f6;
+        border-radius: 10px;
+        animation: progress 1s ease-in-out forwards;
+      }
+      @keyframes progress {
+        0% { width: 0%; }
+        100% { width: 100%; }
+      }
+    </style>
   </head>
   <body>
+    <div id="splash">
+      <h1 style="color: #1e3a8a; font-weight: 900; font-size: 2.5rem; margin-bottom: 20px; letter-spacing: -1px;">StoryBuddy</h1>
+      <div class="loading-bar">
+        <div class="loading-fill"></div>
+      </div>
+      <p style="color: #3b82f6; margin-top: 10px; font-weight: bold; font-size: 0.9rem;">Memuat Keajaiban... / Loading Magic...</p>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

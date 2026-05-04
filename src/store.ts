@@ -7,6 +7,7 @@ export interface Avatar {
   clothing: string;
   accessory: string;
   skinTone: string;
+  customImageData?: string;
 }
 
 export interface StoryPage {
@@ -47,6 +48,15 @@ export interface VoiceSettings {
 }
 
 export type AppLanguage = "id" | "en";
+
+export const clearAllDataAndReload = async () => {
+  if (window.confirm("Are you sure you want to clear ALL data? This will delete all stories, settings, and avatars.")) {
+    localStorage.clear();
+    const { clear } = await import("idb-keyval");
+    await clear();
+    window.location.reload();
+  }
+};
 
 interface AppState {
   stories: Story[];

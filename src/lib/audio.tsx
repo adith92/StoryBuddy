@@ -17,7 +17,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isSpeaking, setIsSpeaking] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
-  const { voiceSettings } = useAppStore();
+  const { voiceSettings, language } = useAppStore();
   const audioObjRef = useRef<HTMLAudioElement | null>(null);
 
   const startRecording = async () => {
@@ -68,9 +68,15 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     stopSpeaking();
     
-    const utterance = new SpeechSynthesisUtterance(text);
+    // Ensure voices are loaded (sometimes they load async in browsers)
     const voices = window.speechSynthesis.getVoices();
-    const voice = voices.find(v => v.lang.includes("en-") && (v.name.includes("Female") || v.name.includes("Samantha") || v.name.includes("Google"))) || voices[0];
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    const langCode = language === "id" ? "id-ID" : "en-US";
+    utterance.lang = langCode;
+
+    // Try finding a matching language voice
+    const voice = voices.find(v => v.lang.includes(langCode.split('-')[0])) || voices[0];
     if (voice) {
       utterance.voice = voice;
     }
