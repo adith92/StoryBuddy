@@ -42,18 +42,32 @@ export interface AudioRecording {
 }
 
 export interface VoiceSettings {
+  provider: "native" | "elevenlabs" | "sumopod";
   elevenLabsApiKey: string;
   customVoiceId: string;
-  useCustomVoice: boolean;
+  sumoPodApiKey: string;
+  sumoPodVoiceId: string; // e.g. 'alloy', 'echo', or their own custom voice
+}
+
+export interface AiSettings {
+  provider: "gemini" | "sumopod" | "custom";
+  sumoPodApiKey: string;
+  sumoPodModelId: string;
+  
+  imageProvider: "gemini" | "vynaa";
+  vynaaImageMode: "maker" | "deepimg" | "pollinations";
+  
+  customBaseUrl?: string;
 }
 
 export type AppLanguage = "id" | "en";
 
 export const clearAllDataAndReload = async () => {
-  if (window.confirm("Are you sure you want to clear ALL data? This will delete all stories, settings, and avatars.")) {
+  if (window.confirm("Apakah Anda yakin ingin menghapus SEMUA data? Ini akan menghapus semua cerita, pengaturan, dan avatar.\n\nAre you sure you want to clear ALL data? This will delete all stories, settings, and avatars.")) {
     localStorage.clear();
     const { clear } = await import("idb-keyval");
     await clear();
+    alert("Data berhasil dihapus! / Data successfully deleted!");
     window.location.reload();
   }
 };
@@ -68,6 +82,7 @@ interface AppState {
   parentPin: string | null;
   avatar: Avatar;
   voiceSettings: VoiceSettings;
+  aiSettings: AiSettings;
   language: AppLanguage;
 
   setStories: (stories: Story[]) => void;
@@ -80,7 +95,10 @@ interface AppState {
   setParentPin: (pin: string | null) => void;
   setAvatar: (avatar: Partial<Avatar>) => void;
   setVoiceSettings: (settings: Partial<VoiceSettings>) => void;
+  setAiSettings: (settings: Partial<AiSettings>) => void;
   setLanguage: (lang: AppLanguage) => void;
+  bgMusicEnabled: boolean;
+  setBgMusicEnabled: (enabled: boolean) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -91,6 +109,7 @@ export const useAppStore = create<AppState>()(
       currentPageIndex: 0,
       badges: [],
       points: 0,
+      bgMusicEnabled: false,
       recordings: [],
       parentPin: null,
       language: "id", // Default to Indonesian
@@ -102,9 +121,18 @@ export const useAppStore = create<AppState>()(
         skinTone: "medium",
       },
       voiceSettings: {
+        provider: "native",
         elevenLabsApiKey: "",
         customVoiceId: "",
-        useCustomVoice: false,
+        sumoPodApiKey: "",
+        sumoPodVoiceId: "alloy",
+      },
+      aiSettings: {
+        provider: "gemini",
+        sumoPodApiKey: "",
+        sumoPodModelId: "gpt-4o",
+        imageProvider: "vynaa",
+        vynaaImageMode: "maker",
       },
 
       setStories: (stories) => set({ stories }),
@@ -118,6 +146,7 @@ export const useAppStore = create<AppState>()(
       addRecording: (recording) =>
         set((state) => ({ recordings: [...state.recordings, recording] })),
       addPoints: (points) => set((state) => ({ points: state.points + points })),
+      setBgMusicEnabled: (enabled) => set({ bgMusicEnabled: enabled }),
       unlockBadge: (badgeId) =>
         set((state) => {
           if (!state.badges.includes(badgeId)) {
@@ -128,6 +157,7 @@ export const useAppStore = create<AppState>()(
       setParentPin: (pin) => set({ parentPin: pin }),
       setAvatar: (avatar) => set((state) => ({ avatar: { ...state.avatar, ...avatar } })),
       setVoiceSettings: (settings) => set((state) => ({ voiceSettings: { ...state.voiceSettings, ...settings } })),
+      setAiSettings: (settings) => set((state) => ({ aiSettings: { ...state.aiSettings, ...settings } })),
       setLanguage: (language) => set({ language }),
     }),
     {
@@ -138,6 +168,7 @@ export const useAppStore = create<AppState>()(
         avatar: state.avatar, 
         language: state.language, 
         voiceSettings: state.voiceSettings, 
+        aiSettings: state.aiSettings,
         parentPin: state.parentPin 
       }),
     }

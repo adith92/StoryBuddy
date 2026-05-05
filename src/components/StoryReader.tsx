@@ -9,11 +9,19 @@ import { OfflineImage } from "./OfflineImage";
 import { LoadingBar } from "./LoadingBar";
 
 export const StoryReader: React.FC<{ onViewChange: (view: "dashboard" | "generator" | "reader") => void }> = ({ onViewChange }) => {
-  const { currentStory, currentPageIndex, setCurrentPageIndex, updateStory, addPoints, addRecording, points, avatar, language, setLanguage } = useAppStore();
+  const { currentStory, currentPageIndex, setCurrentPageIndex, updateStory, addPoints, addRecording, points, avatar, language, setLanguage, bgMusicEnabled } = useAppStore();
   const { speak, isSpeaking, stopSpeaking, startRecording, stopRecording, isRecording } = useAudioContext();
   
   const [hasFinishedStory, setHasFinishedStory] = useState(false);
   const [isGeneratingNext, setIsGeneratingNext] = useState(false);
+
+  const audioRef = React.useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = 0.15; // Set volume to 15%
+    }
+  }, [bgMusicEnabled]);
 
   useEffect(() => {
     return () => stopSpeaking();
@@ -128,6 +136,9 @@ export const StoryReader: React.FC<{ onViewChange: (view: "dashboard" | "generat
 
   return (
     <div className="w-full max-w-[1024px] mx-auto p-4 sm:p-8 flex flex-col min-h-screen gap-6">
+      {bgMusicEnabled && (
+        <audio ref={audioRef} src="https://upload.wikimedia.org/wikipedia/commons/1/14/Brahms_Lullaby.ogg" autoPlay loop className="hidden" />
+      )}
       <header className="flex justify-between items-center">
         <button onClick={() => onViewChange("dashboard")} className="text-red-500 hover:bg-red-50 px-6 py-2 rounded-full font-black border-4 border-red-100 flex items-center gap-2 bg-white transition-all active:scale-95">
           <X size={20} /> {t.back}

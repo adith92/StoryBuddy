@@ -9,9 +9,9 @@ export async function downloadStoryImages(story: Story, onProgress?: (progress: 
     const key = `cover-${story.id}`;
     if (!(await get(key))) {
       try {
-        const dataUrl = await generateImage(story.title + " children story book cover");
+        const dataUrl = await generateImage(story.title + " children story book cover", story.id);
         await set(key, await (await fetch(dataUrl)).blob());
-      } catch (e) { console.error(e); }
+      } catch (e) { console.warn("Failed to download cover image", e); }
     }
   });
 
@@ -20,9 +20,9 @@ export async function downloadStoryImages(story: Story, onProgress?: (progress: 
       const key = `page-${p.id}`;
       if (!(await get(key))) {
         try {
-          const dataUrl = await generateImage(p.illustrationPrompt);
+          const dataUrl = await generateImage(p.illustrationPrompt, p.id);
           await set(key, await (await fetch(dataUrl)).blob());
-        } catch (e) { console.error(e); }
+        } catch (e) { console.warn("Failed to download page image", e); }
       }
     });
   }
@@ -55,14 +55,11 @@ export function useOfflineImage(cacheKey: string, prompt?: string) {
       if (!blob && prompt) {
         // Try to generate on the fly if not found
         try {
-          const dataUrl = await generateImage(prompt);
+          const dataUrl = await generateImage(prompt, cacheKey);
           blob = await (await fetch(dataUrl)).blob();
           await set(cacheKey, blob);
         } catch (e) {
-          console.error("Failed to generate image on the fly", e);
-          // Fallback to pollinations if gemini fails
-          blob = await (await fetch(`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=600&nologo=true&seed=${cacheKey}`)).blob();
-          await set(cacheKey, blob);
+          console.warn("Generating image on the fly ultimately failed even with fallback", e);
         }
       }
 

@@ -1,20 +1,30 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# StoryBuddy
 
-# Run and deploy your AI Studio app
+A magical AI-generated children's story book maker. 
 
-This contains everything you need to run your app locally.
+## Env Configuration
 
-View your app in AI Studio: https://ai.studio/apps/2d98169e-e72f-4300-955c-9467be637a05
+depending on the backend API requirements, configure the following secrets in your environment variables/secrets panel:
 
-## Run Locally
+- `GEMINI_API_KEY`: Required for Gemini LLM and standard Gemini generation.
+- `VYNAA_API_KEY`: Required for Vynaa high-quality image generation.
 
-**Prerequisites:**  Node.js
+### Vynaa Image Integration & Multi-Provider 
+This app supports a flexible multi-provider architecture for image generation.
 
+- **Multi-Provider Selector:** In the Parent Portal settings, you can seamlessly switch between "Vynaa AI" and "Google Gemini". Vynaa AI is set as the **default** provider for standard illustration generation.
+- **Vynaa Endpoints used:** 
+  1. Maker (`https://vynaa.web.id/maker/botcahx-maker/text2img`)
+  2. DeepImg (`https://vynaa.web.id/ai/deepimg/deepimg`)
+  3. Pollinations (`https://vynaa.web.id/pollinations/pollinations/image`)
+- **How to test the integration:** 
+  Visit the "Parent Portal" -> "Settings", scroll down to "Image Provider". Select "Vynaa AI" and choose your desired mode (e.g. Maker). Click on the "Cek API Vynaa" button to invoke the internal `/api/vynaa/test` endpoint ensuring your keys are correct.
+- **Setting the Secret (`VYNAA_API_KEY`):**
+  Do not hardcode your API Key in the source code. Use the "Secrets" panel in Google AI Studio or set the `VYNAA_API_KEY` environment variable in your deployment environment. 
+  The key is strictly retrieved via `process.env.VYNAA_API_KEY` in the backend service (`server.ts`) keeping client-side secure. None of the keys are sent to the client browser.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### How to Run
+```bash
+npm install
+npm run dev
+```
