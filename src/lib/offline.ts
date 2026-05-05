@@ -20,7 +20,7 @@ export async function downloadStoryImages(story: Story, onProgress?: (progress: 
       const key = `page-${p.id}`;
       if (!(await get(key))) {
         try {
-          const dataUrl = await generateImage(p.illustrationPrompt, p.id);
+          const dataUrl = await generateImage(p.illustrationPrompt, story.id);
           await set(key, await (await fetch(dataUrl)).blob());
         } catch (e) { console.warn("Failed to download page image", e); }
       }
@@ -42,7 +42,7 @@ export async function removeStoryImages(story: Story): Promise<void> {
   }
 }
 
-export function useOfflineImage(cacheKey: string, prompt?: string) {
+export function useOfflineImage(cacheKey: string, prompt?: string, seed?: string) {
   const [src, setSrc] = useState<string>("");
 
   useEffect(() => {
@@ -55,9 +55,16 @@ export function useOfflineImage(cacheKey: string, prompt?: string) {
       if (!blob && prompt) {
         // Try to generate on the fly if not found
         try {
-          const dataUrl = await generateImage(prompt, cacheKey);
-          blob = await (await fetch(dataUrl)).blob();
-          await set(cacheKey, blob);
+          const dataUrl = await generateImage(prompt, seed || cacheKey);
+          try {
+            blob = await (await fetch(dataUrl)).blob();
+            await set(cacheKey, blob);
+          } catch (e) {
+            console.warn("Failed to save generated image to offline cache (possibly CORS), falling back to direct URL", e);
+            if (!isMounted) return;
+            setSrc(dataUrl);
+            return;
+          }
         } catch (e) {
           console.warn("Generating image on the fly ultimately failed even with fallback", e);
         }
@@ -79,7 +86,7 @@ export function useOfflineImage(cacheKey: string, prompt?: string) {
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [cacheKey, prompt]);
+  }, [cacheKey, prompt, seed]);
 
   return src;
 }

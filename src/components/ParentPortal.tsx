@@ -98,8 +98,8 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
       toggleDesc: "Pilih antara Native TTS, ElevenLabs, atau SumoPod",
       noRecordings: "Belum ada rekaman. Yuk suruh si kecil membaca!",
       storyList: "Rekaman Suara Anak",
-      clearData: "Hapus Semua Data",
-      clearDataDesc: "Hapus semua cerita, profil, dan mulai dari awal."
+      clearData: "Hapus Data Cerita",
+      clearDataDesc: "Hapus semua riwayat buku dan cerita yang dibuat."
     },
     en: {
       onlyParents: "Parents Only!",
@@ -125,8 +125,8 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
       toggleDesc: "Choose between Web Speech API, ElevenLabs, or SumoPod",
       noRecordings: "No recordings yet. Encourage them to read aloud!",
       storyList: "Child's Voice Recordings",
-      clearData: "Clear All Data",
-      clearDataDesc: "Delete all stories, profiles, and start fresh."
+      clearData: "Clear Story Data",
+      clearDataDesc: "Delete all generated stories and books history."
     }
   }[language];
 
@@ -579,10 +579,16 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
                         </button>
                         <button 
                           onClick={async () => {
-                            localStorage.clear();
-                            const { clear } = await import("idb-keyval");
-                            await clear();
-                            showToast(language === "id" ? "Data berhasil dihapus! Memuat ulang..." : "Data successfully deleted! Reloading...");
+                            // Only clear stories and recordings from state
+                            useAppStore.setState({ stories: [], currentStory: null, currentPageIndex: 0, recordings: [] });
+                            const { keys, del } = await import("idb-keyval");
+                            const allKeys = await keys();
+                            for (const key of allKeys) {
+                              if (typeof key === "string" && (key.startsWith("page-") || key.startsWith("cover-") || key.startsWith("story-"))) {
+                                await del(key);
+                              }
+                            }
+                            showToast(language === "id" ? "Data cerita berhasil dihapus! Memuat ulang..." : "Story data successfully deleted! Reloading...");
                             setTimeout(() => window.location.href = "/", 1000);
                           }}
                           className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-xl transition-colors shadow-sm text-sm"

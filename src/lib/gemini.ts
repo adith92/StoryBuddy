@@ -9,7 +9,7 @@ export async function generateImage(prompt: string, seed?: string): Promise<stri
 
   if (aiSettings.imageProvider === 'vynaa') {
     try {
-      return await generateImageWithVynaa(prompt, aiSettings.vynaaImageMode);
+      return await generateImageWithVynaa(prompt, aiSettings.vynaaImageMode, seed);
     } catch (error) {
       console.warn("Failed to generate image using Vynaa, falling back to Pollinations directly.", error);
       return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt + " 2d vector art children style")}?width=800&height=600&nologo=true&seed=${seed || Date.now()}`;
@@ -73,7 +73,7 @@ export async function cartoonifyPhoto(fileData: string, mimeType: string): Promi
 
 export async function generateNewStory(theme: string, character: string, isInteractive: boolean, avatar: Avatar, language: AppLanguage): Promise<Story> {
   const languageName = language === "id" ? "Indonesian (Bahasa Indonesia)" : "English";
-  const avatarDesc = `The main character looks like this: ${avatar.skinTone} skin tone, ${avatar.hairStyle} ${avatar.hairColor} hair, wearing a ${avatar.clothing}. Accessory: ${avatar.accessory}.`;
+  const avatarDesc = `[CRITICAL CHARACTER CONSISTENCY]: The main character MUST look EXACTLY like this in EVERY single illustration prompt: A cute child with ${avatar.skinTone} skin tone, ${avatar.hairStyle} ${avatar.hairColor} hair, wearing ${avatar.clothing}, and holding/wearing: ${avatar.accessory}. Do NOT change the character's face, clothes, or hair between pages. Start EVERY illustrationPrompt with this exact description to lock the character's appearance.`;
   
   const rules = isInteractive ? 
     `This is an interactive "Choose Your Own Adventure" story. Generate ONLY the FIRST page of the story (1-3 sentences) setting up the beginning. Include 2 or 3 choices for the child to decide what the character does next.` :
@@ -181,7 +181,7 @@ export async function generateNewStory(theme: string, character: string, isInter
 
 export async function generateNextPage(story: Story, choice: string, avatar: Avatar, language: AppLanguage): Promise<StoryPage> {
   const languageName = language === "id" ? "Indonesian (Bahasa Indonesia)" : "English";
-  const avatarDesc = `The main character looks like this: ${avatar.skinTone} skin tone, ${avatar.hairStyle} ${avatar.hairColor} hair, wearing a ${avatar.clothing}. Accessory: ${avatar.accessory}.`;
+  const avatarDesc = `[CRITICAL CHARACTER CONSISTENCY]: The main character MUST look EXACTLY like this in EVERY single illustration prompt: A cute child with ${avatar.skinTone} skin tone, ${avatar.hairStyle} ${avatar.hairColor} hair, wearing ${avatar.clothing}, and holding/wearing: ${avatar.accessory}. Do NOT change the character's face, clothes, or hair between pages. Start EVERY illustrationPrompt with this exact description to lock the character's appearance.`;
   
   const history = story.pages.map((p, i) => `Page ${i + 1}: ${p.text}`).join('\n');
   

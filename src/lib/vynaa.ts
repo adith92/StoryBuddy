@@ -1,14 +1,15 @@
 import { useAppStore } from "../store";
 
-export async function generateImageWithVynaa(prompt: string, mode: "maker" | "deepimg" | "pollinations" = "maker"): Promise<string> {
+export async function generateImageWithVynaa(prompt: string, mode: "maker" | "deepimg" | "pollinations" = "maker", seed?: string): Promise<string> {
   const tryGenerate = async (currentMode: string) => {
+    const finalPrompt = seed ? `${prompt} Bright, colorful, 2D vector children's book illustration style. Seed: ${seed}` : `${prompt} Bright, colorful, 2D vector children's book illustration style.`;
     const response = await fetch("/api/vynaa/generate-image", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        prompt: prompt + " Bright, colorful, 2D vector children's book illustration style.",
+        prompt: finalPrompt,
         mode: currentMode
       })
     });

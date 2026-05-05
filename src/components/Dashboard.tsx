@@ -170,7 +170,7 @@ export const Dashboard: React.FC<{ onViewChange: (view: "dashboard" | "generator
                     )}
                   </div>
                   <div className="h-48 bg-blue-50 relative overflow-hidden flex items-center justify-center">
-                     <OfflineImage cacheKey={`cover-${story.id}`} prompt={story.title + " children story book cover vibrant 2d vector vector art"} alt={story.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 mix-blend-multiply opacity-80" />
+                     <OfflineImage cacheKey={`cover-${story.id}`} prompt={story.title + " children story book cover vibrant 2d vector vector art"} seed={story.id} alt={story.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 mix-blend-multiply opacity-80" />
                      <div className="absolute inset-x-0 bottom-0 py-6 px-4 bg-gradient-to-t from-blue-900/90 to-transparent flex flex-col justify-end h-full">
                        <span className="bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full w-fit mb-2 shadow-sm">{story.genre}</span>
                      </div>

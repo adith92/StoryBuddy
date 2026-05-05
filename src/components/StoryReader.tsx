@@ -164,8 +164,8 @@ export const StoryReader: React.FC<{ onViewChange: (view: "dashboard" | "generat
         </div>
       </header>
 
-      <main className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-6 min-h-0">
-        <div className="md:col-span-8 bg-white rounded-[48px] shadow-xl overflow-hidden border-8 border-white relative min-h-[300px]">
+      <main className="flex-1 flex flex-col gap-4 md:gap-6 min-h-0 pb-6 overflow-y-auto">
+        <div className="bg-white rounded-[48px] shadow-xl overflow-hidden border-8 border-white relative h-[40vh] md:h-[55vh] flex-shrink-0">
            {isGeneratingNext ? (
              <div className="absolute inset-0 bg-blue-50/90 backdrop-blur-sm flex flex-col items-center justify-center p-8 z-10">
                 <LoadingBar message={t.writing} />
@@ -174,23 +174,24 @@ export const StoryReader: React.FC<{ onViewChange: (view: "dashboard" | "generat
              <OfflineImage 
                cacheKey={`page-${page.id}`}
                prompt={page.illustrationPrompt}
+               seed={currentStory.id}
                alt="illustration"
-               className="w-full h-full object-cover"
+               className="w-full h-full object-cover md:object-contain bg-slate-100"
              />
            )}
         </div>
 
-        <div className="md:col-span-4 flex flex-col gap-6 h-full">
-          <div className="bg-white rounded-[40px] p-8 shadow-xl border-4 border-blue-50 flex-1 flex items-center justify-center text-center overflow-y-auto">
-             <p className="text-2xl font-bold text-blue-950 leading-relaxed">{page.text}</p>
+        <div className="flex flex-col gap-4 md:gap-6">
+          <div className="bg-white rounded-[40px] p-6 md:p-8 shadow-xl border-4 border-blue-50 text-center">
+             <p className="text-2xl md:text-3xl font-bold text-blue-950 leading-relaxed">{page.text}</p>
           </div>
 
-          <div className="bg-white rounded-[40px] p-6 shadow-lg space-y-4 border-4 border-orange-100">
+          <div className="bg-white rounded-[40px] p-6 shadow-lg space-y-4 border-4 border-orange-100 mt-auto md:w-3/4 mx-auto w-full">
              {isInteractiveChoicePage ? (
                <div className="space-y-3">
                   <h3 className="font-black text-purple-900 flex items-center gap-2 mb-2"><Sparkles className="text-orange-500" /> {t.choicePrompt}</h3>
                   {page.choices?.map((choice, i) => (
-                    <button key={i} onClick={() => handleChoice(choice)} className="w-full py-4 px-6 bg-purple-500 hover:bg-purple-600 text-white font-black text-lg rounded-2xl shadow-md transition-all active:scale-95">
+                    <button key={i} onClick={() => handleChoice(choice)} className="w-full py-4 px-6 bg-purple-500 hover:bg-purple-600 text-white font-black text-lg rounded-2xl shadow-md transition-all active:scale-95 leading-snug text-left md:text-center">
                       {choice}
                     </button>
                   ))}

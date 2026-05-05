@@ -71,7 +71,24 @@ async function startServer() {
         // Find image URL from common JSON response structures
         const imageUrl = data?.data || data?.result || data?.url || data?.image || data?.imageUrl || data?.output;
         
-        if (imageUrl && typeof imageUrl === "string" && (imageUrl.startsWith("http") || imageUrl.startsWith("data:"))) {
+        if (imageUrl && typeof imageUrl === "string" && imageUrl.startsWith("http")) {
+           try {
+             // Fetch the image on the server to prevent CORS issues on the frontend
+             const imgResponse = await fetch(imageUrl);
+             if (imgResponse.ok) {
+               const imgBuffer = await imgResponse.arrayBuffer();
+               const imgBase64 = Buffer.from(imgBuffer).toString("base64");
+               const imgType = imgResponse.headers.get("content-type") || "image/jpeg";
+               return res.json({ url: `data:${imgType};base64,${imgBase64}` });
+             } else {
+                 // if fails to fetch, just return the url as fallback
+                 return res.json({ url: imageUrl });
+             }
+           } catch (fetchErr) {
+             console.error("Vynaa image fetch proxy error:", fetchErr);
+             return res.json({ url: imageUrl });
+           }
+        } else if (imageUrl && typeof imageUrl === "string" && imageUrl.startsWith("data:")) {
            return res.json({ url: imageUrl });
         }
         
