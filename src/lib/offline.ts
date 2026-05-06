@@ -56,8 +56,23 @@ export function useOfflineImage(cacheKey: string, prompt?: string, seed?: string
         // Try to generate on the fly if not found
         try {
           const dataUrl = await generateImage(prompt, seed || cacheKey);
+          if (!isMounted) return;
+          
+          if (dataUrl.startsWith("data:")) {
+            // It's a base64 from proxy, avoid double-fetching if not needed
+            setSrc(dataUrl);
+            try {
+               const res = await fetch(dataUrl);
+               blob = await res.blob();
+               await set(cacheKey, blob);
+            } catch (ignore) {}
+            return;
+          }
+
           try {
-            blob = await (await fetch(dataUrl)).blob();
+            const res = await fetch(dataUrl);
+            if (!res.ok) throw new Error("Fetch failed for image URL");
+            blob = await res.blob();
             await set(cacheKey, blob);
           } catch (e) {
             console.warn("Failed to save generated image to offline cache (possibly CORS), falling back to direct URL", e);
@@ -66,7 +81,7 @@ export function useOfflineImage(cacheKey: string, prompt?: string, seed?: string
             return;
           }
         } catch (e) {
-          console.warn("Generating image on the fly ultimately failed even with fallback", e);
+          console.error("Generating image on the fly ultimately failed", e);
         }
       }
 

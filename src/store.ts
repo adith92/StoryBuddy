@@ -42,11 +42,12 @@ export interface AudioRecording {
 }
 
 export interface VoiceSettings {
-  provider: "native" | "elevenlabs" | "sumopod";
+  provider: "native" | "elevenlabs" | "sumopod" | "vynaa";
   elevenLabsApiKey: string;
   customVoiceId: string;
   sumoPodApiKey: string;
   sumoPodVoiceId: string; // e.g. 'alloy', 'echo', or their own custom voice
+  vynaaVoiceId: string;
 }
 
 export interface AiSettings {
@@ -126,6 +127,7 @@ export const useAppStore = create<AppState>()(
         customVoiceId: "",
         sumoPodApiKey: "",
         sumoPodVoiceId: "alloy",
+        vynaaVoiceId: "aura-asteria-en",
       },
       aiSettings: {
         provider: "gemini",

@@ -4,6 +4,7 @@ import { ArrowLeft, User, Sparkles, Camera, Loader2 } from "lucide-react";
 import { cartoonifyPhoto } from "../lib/gemini";
 import { set } from "idb-keyval";
 import { OfflineImage } from "./OfflineImage";
+import { motion, AnimatePresence } from "motion/react";
 
 export const AvatarCreator: React.FC<{ onViewChange: (view: "dashboard" | "parentPortal") => void }> = ({ onViewChange }) => {
   const { avatar, setAvatar, language } = useAppStore();
@@ -95,15 +96,30 @@ export const AvatarCreator: React.FC<{ onViewChange: (view: "dashboard" | "paren
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="bg-white rounded-[48px] p-8 shadow-xl border-8 border-white flex flex-col items-center justify-center relative overflow-hidden">
              <div className="absolute inset-0 bg-gradient-to-br from-green-200 to-blue-200 opacity-50"></div>
-             <div className="relative z-10 w-64 h-64 bg-white rounded-full p-4 shadow-2xl mb-6">
+             <motion.div 
+                className="relative z-10 w-64 h-64 bg-white rounded-full p-4 shadow-2xl mb-6"
+                animate={{ y: [0, -10, 0] }}
+                transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+             >
                 {isUploading ? (
                   <div className="flex bg-slate-100 rounded-full w-full h-full items-center justify-center">
                     <Loader2 className="animate-spin text-blue-500" size={48} />
                   </div>
                 ) : (
-                  <OfflineImage cacheKey="custom-avatar" prompt={avatar.customImageData ? undefined : `A cute child with ${avatar.skinTone} skin tone, ${avatar.hairStyle} ${avatar.hairColor} hair, wearing a ${avatar.clothing}, accessory: ${avatar.accessory}. 2d vector art bright child friendly simple portrait.`} alt="Avatar" className="w-full h-full object-cover rounded-full border-4 border-blue-100" />
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={avatar.skinTone + avatar.hairStyle + avatar.hairColor + (avatar.customImageData || '')}
+                      initial={{ scale: 0.8, opacity: 0, rotate: -10 }}
+                      animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                      exit={{ scale: 0.8, opacity: 0, rotate: 10 }}
+                      transition={{ type: "spring", bounce: 0.5 }}
+                      className="w-full h-full"
+                    >
+                      <OfflineImage cacheKey="custom-avatar" prompt={avatar.customImageData ? undefined : `A cute child with ${avatar.skinTone} skin tone, ${avatar.hairStyle} ${avatar.hairColor} hair, wearing a ${avatar.clothing}, accessory: ${avatar.accessory}. 2d vector art bright child friendly simple portrait.`} alt="Avatar" className="w-full h-full object-cover rounded-full border-4 border-blue-100" />
+                    </motion.div>
+                  </AnimatePresence>
                 )}
-             </div>
+             </motion.div>
              <h2 className="text-3xl font-black text-blue-900 relative z-10 flex items-center gap-2 mb-4">
                 <Sparkles className="text-yellow-400" /> {t.hero} <Sparkles className="text-yellow-400" />
              </h2>

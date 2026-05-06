@@ -277,10 +277,14 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
                   <div className="font-bold text-slate-800">{t.useCustom}</div>
                   <div className="text-sm text-slate-500 font-medium">{t.toggleDesc}</div>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-4 mt-2">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" name="provider" checked={voiceSettings.provider === 'native'} onChange={() => setVoiceSettings({ provider: 'native' })} className="w-4 h-4 text-indigo-600" />
                     <span className="font-medium text-slate-700">Native API</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="provider" checked={voiceSettings.provider === 'vynaa'} onChange={() => setVoiceSettings({ provider: 'vynaa' })} className="w-4 h-4 text-indigo-600" />
+                    <span className="font-medium text-slate-700">Vynaa AI</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" name="provider" checked={voiceSettings.provider === 'elevenlabs'} onChange={() => setVoiceSettings({ provider: 'elevenlabs' })} className="w-4 h-4 text-indigo-600" />
@@ -314,6 +318,24 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
                       onChange={(e) => setVoiceSettings({ customVoiceId: e.target.value })}
                       className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-indigo-500"
                       placeholder="e.g. pNInz6obpgDQGcFmaJcg"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {voiceSettings.provider === 'vynaa' && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                  <div className="bg-amber-50 p-4 border border-amber-200 rounded-xl mb-4">
+                    <p className="text-sm text-amber-800 font-medium">Vynaa AI menggunakan VYNAA_API_KEY dari backend server. Anda bisa memilih ID suara seperti 'aura-asteria-en' atau yang bahasa Indonesia.</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Voice ID (Contoh: aurina, erlangga, dll atau aura-asteria-en)</label>
+                    <input 
+                      type="text"
+                      className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all font-mono"
+                      value={voiceSettings.vynaaVoiceId || ''}
+                      onChange={(e) => setVoiceSettings({ vynaaVoiceId: e.target.value })}
+                      placeholder="e.g. aurina"
                     />
                   </div>
                 </div>

@@ -12,7 +12,9 @@ export async function generateImage(prompt: string, seed?: string): Promise<stri
       return await generateImageWithVynaa(prompt, aiSettings.vynaaImageMode, seed);
     } catch (error) {
       console.warn("Failed to generate image using Vynaa, falling back to Pollinations directly.", error);
-      return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt + " 2d vector art children style")}?width=800&height=600&nologo=true&seed=${seed || Date.now()}`;
+      const numSeed = seed ? Array.from(seed).reduce((acc, char) => acc + char.charCodeAt(0), 0) : Date.now();
+      const safePrompt = (prompt + " 2d vector art children style").slice(0, 800);
+      return `https://image.pollinations.ai/prompt/${encodeURIComponent(safePrompt)}?width=800&height=600&nologo=true&seed=${numSeed}`;
     }
   }
 
@@ -40,7 +42,9 @@ export async function generateImage(prompt: string, seed?: string): Promise<stri
     } else {
       console.warn("Failed to generate image using Gemini, falling back to Pollinations.");
     }
-    return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt + " 2d vector art children style")}?width=800&height=600&nologo=true&seed=${seed || Date.now()}`;
+    const numSeed = seed ? Array.from(seed).reduce((acc, char) => acc + char.charCodeAt(0), 0) : Date.now();
+    const safePrompt = (prompt + " 2d vector art children style").slice(0, 800);
+    return `https://image.pollinations.ai/prompt/${encodeURIComponent(safePrompt)}?width=800&height=600&nologo=true&seed=${numSeed}`;
   }
 }
 

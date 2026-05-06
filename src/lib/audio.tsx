@@ -89,7 +89,13 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setIsSpeaking(false);
       if (onEnd) onEnd();
     };
-    utterance.onerror = () => setIsSpeaking(false);
+    utterance.onerror = (e) => {
+      console.error("SpeechSynthesis error", e);
+      if ((e as any).error !== 'interrupted' && (e as any).error !== 'canceled') {
+        alert(`Text-to-Speech Error: ${(e as any).error || "Unknown Error"}. Silakan coba restart browser atau gunakan provider lain.`);
+      }
+      setIsSpeaking(false);
+    };
 
     window.speechSynthesis.speak(utterance);
   };
@@ -177,6 +183,52 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const speakVynaa = async (text: string, onEnd?: () => void) => {
+    setIsSpeaking(true);
+    try {
+      const response = await fetch(`/api/vynaa/tts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text,
+          voiceId: voiceSettings.vynaaVoiceId || "aura-asteria-en"
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Failed to generate voice using Vynaa: ${errText}`);
+      }
+
+      const data = await response.json();
+      if (!data.audio) {
+          throw new Error(`API response did not contain audio URL: ${JSON.stringify(data).slice(0, 100)}`);
+      }
+      
+      const audio = new Audio(data.audio);
+      audioObjRef.current = audio;
+      
+      audio.onended = () => {
+        setIsSpeaking(false);
+        if (onEnd) onEnd();
+      };
+      
+      audio.onerror = (e) => {
+         console.error("Vynaa audio playback error", e);
+         throw new Error("Failed to play Vynaa audio stream.");
+      };
+      
+      await audio.play();
+
+    } catch (e: any) {
+      console.error(e);
+      alert(`Failed to speak using Vynaa AI: ${e.message || "Unknown Error"}\nFalling back to default.`);
+      speakNative(text, onEnd);
+    }
+  };
+
   const speak = (text: string, onEnd?: () => void) => {
     stopSpeaking();
     
@@ -184,6 +236,8 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
        speakElevenLabs(text, onEnd);
     } else if (voiceSettings.provider === 'sumopod' && voiceSettings.sumoPodApiKey) {
        speakSumoPod(text, onEnd);
+    } else if (voiceSettings.provider === 'vynaa') {
+       speakVynaa(text, onEnd);
     } else {
        speakNative(text, onEnd);
     }
@@ -192,6 +246,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const stopSpeaking = () => {
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel();
+      window.speechSynthesis.resume();
     }
     if (audioObjRef.current) {
       audioObjRef.current.pause();
@@ -202,6 +257,14 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   useEffect(() => {
+    // Warm up speech synthesis
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
+
     return () => {
       stopSpeaking();
       if (mediaRecorderRef.current && isRecording) {

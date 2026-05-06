@@ -8,6 +8,58 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Vynaa AI TTS API
+  app.post("/api/vynaa/tts", async (req, res) => {
+    try {
+      const { text, voiceId } = req.body;
+      if (!text) {
+        return res.status(400).json({ error: "Text is required." });
+      }
+
+      const apiKey = process.env.VYNAA_API_KEY;
+      if (!apiKey) {
+        return res.status(401).json({ error: "VYNAA_API_KEY belum diset." });
+      }
+
+      // Default voice if none provided
+      const vid = voiceId || "aura-asteria-en";
+      
+      // Try botcahx or elevenlabs through Vynaa
+      // The elevenlabs structure from Vynaa is generally like this:
+      const url = `https://vynaa.web.id/ai/elevenlabs/elevenlabs?apikey=${apiKey}&text=${encodeURIComponent(text)}&voice_id=${vid}`;
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+         return res.status(response.status).json({ error: `Vynaa TTS API Error: ${response.statusText}` });
+      }
+      
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.startsWith("audio/")) {
+        const buffer = await response.arrayBuffer();
+        const base64 = Buffer.from(buffer).toString("base64");
+        return res.json({ audio: `data:${contentType};base64,${base64}` });
+      }
+      
+      // If it returned JSON (error message)
+      const data = await response.json();
+      if (data?.url) { // sometimes it returns { url: "https://..." }
+        const audRes = await fetch(data.url);
+        if (audRes.ok) {
+           const audType = audRes.headers.get("content-type") || "audio/mpeg";
+           const audBuf = await audRes.arrayBuffer();
+           const fileBase64 = Buffer.from(audBuf).toString("base64");
+           return res.json({ audio: `data:${audType};base64,${fileBase64}` });
+        }
+        return res.json({ audio: data.url });
+      }
+      
+      return res.status(500).json({ error: `Failed to synthesize speech via Vynaa. Raw: ${JSON.stringify(data).slice(0, 100)}` });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message || "Something went wrong in TTS." });
+    }
+  });
+
   // internal API for Vynaa image generation
   app.post("/api/vynaa/generate-image", async (req, res) => {
     try {
@@ -59,8 +111,10 @@ async function startServer() {
         return res.json({ url: `data:${contentType};base64,${base64}` });
       }
 
+      let responseText = "";
       try {
-        const data = await response.json();
+        responseText = await response.text();
+        const data = JSON.parse(responseText);
         
         // Handle 200 OK responses that represent errors
         if (data?.success === false || data?.status === false) {
@@ -94,7 +148,8 @@ async function startServer() {
         
         return res.json({ rawData: data, warning: "Could not automatically resolve image URL from JSON response." });
       } catch (err) {
-        return res.status(500).json({ error: "Failed to parse JSON response from Vynaa." });
+        console.error("Failed to parse JSON response from Vynaa. Raw text:", responseText);
+        return res.status(500).json({ error: `Failed to parse JSON response from Vynaa. First 100 chars: ${responseText.slice(0, 100)}` });
       }
     } catch (e: any) {
       return res.status(500).json({ error: e.message || "Something went wrong." });
