@@ -5,6 +5,15 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+function getSumoPodBase() {
+  let base = process.env.SUMOPOD_BASE_URL || "https://ai.sumopod.com";
+  base = base.replace(/\/+$/, "");
+  if (!base.endsWith("/v1")) {
+    base += "/v1";
+  }
+  return base;
+}
+
 function getOwnerSumoPodKey() {
   return process.env.SUMOPOD_API_KEY || "";
 }
@@ -95,7 +104,7 @@ export async function startServer() {
     if (!apiKey) {
       return res.status(200).json({ success: false, error: "SUMOPOD_API_KEY not configured" });
     }
-    const baseUrl = process.env.SUMOPOD_BASE_URL || "https://ai.sumopod.com/v1";
+    const baseUrl = getSumoPodBase();
     const start = Date.now();
     try {
       const resp = await fetch(`${baseUrl}/models`, {
@@ -116,7 +125,7 @@ export async function startServer() {
     const apiKey = getOwnerSumoPodKey();
     if (!apiKey) return res.status(401).json({ error: "SUMOPOD_API_KEY not configured" });
 
-    const baseUrl = process.env.SUMOPOD_BASE_URL || "https://ai.sumopod.com/v1";
+    const baseUrl = getSumoPodBase();
     const model = req.body.model || process.env.SUMOPOD_TEXT_MODEL || "gpt-4o-mini";
     
     try {
@@ -158,7 +167,7 @@ export async function startServer() {
     const apiKey = getOwnerSumoPodKey();
     if (!apiKey) return res.status(401).json({ error: "SUMOPOD_API_KEY not configured" });
 
-    const baseUrl = process.env.SUMOPOD_BASE_URL || "https://ai.sumopod.com/v1";
+    const baseUrl = getSumoPodBase();
     const model = req.body.model || process.env.SUMOPOD_TTS_MODEL || "tts-1";
     const voice = req.body.voice || process.env.SUMOPOD_TTS_VOICE || "alloy";
     
