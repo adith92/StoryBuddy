@@ -146,27 +146,21 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const speakSumoPod = async (text: string, onEnd?: () => void) => {
     setIsSpeaking(true);
     try {
-      const response = await fetch(`https://ai.sumopod.com/v1/audio/speech`, {
+      const response = await fetch("/api/sumopod/tts", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${voiceSettings.sumoPodApiKey}`,
-        },
-        body: JSON.stringify({
-          model: "tts-1",
-          input: text,
-          voice: voiceSettings.sumoPodVoiceId || "alloy"
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
       });
 
       if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`Failed to generate voice using SumoPod: ${errText}`);
+        throw new Error(`Failed to generate voice: ${errText}`);
       }
 
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
+      const data = await response.json();
+      if (!data.audio) throw new Error("No audio returned");
+
+      const audio = new Audio(data.audio);
       audioObjRef.current = audio;
       
       audio.onended = () => {
@@ -174,7 +168,14 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (onEnd) onEnd();
       };
       
-      audio.play();
+      audio.onerror = (e) => {
+        console.error("SumoPod audio playback error", e);
+        setIsSpeaking(false);
+        alert("Failed to play SumoPod audio stream. Falling back.");
+        speakNative(text, onEnd);
+      };
+      
+      await audio.play();
 
     } catch (e: any) {
       console.error(e);
@@ -188,9 +189,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const response = await fetch(`/api/vynaa/tts`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text,
           voiceId: voiceSettings.vynaaVoiceId || "aura-asteria-en"
@@ -217,7 +216,9 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       audio.onerror = (e) => {
          console.error("Vynaa audio playback error", e);
-         throw new Error("Failed to play Vynaa audio stream.");
+         setIsSpeaking(false);
+         alert("Failed to play Vynaa audio stream. Falling back.");
+         speakNative(text, onEnd);
       };
       
       await audio.play();
@@ -234,7 +235,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     if (voiceSettings.provider === 'elevenlabs' && voiceSettings.elevenLabsApiKey && voiceSettings.customVoiceId) {
        speakElevenLabs(text, onEnd);
-    } else if (voiceSettings.provider === 'sumopod' && voiceSettings.sumoPodApiKey) {
+    } else if (voiceSettings.provider === 'sumopod') {
        speakSumoPod(text, onEnd);
     } else if (voiceSettings.provider === 'vynaa') {
        speakVynaa(text, onEnd);

@@ -24,6 +24,7 @@ export interface Story {
   pages: StoryPage[];
   isInteractive: boolean; // True if it's a 'Choose Your Own Adventure' story
   isOffline?: boolean;
+  completedAt?: number;
 }
 
 export interface Badge {
@@ -122,7 +123,7 @@ export const useAppStore = create<AppState>()(
         skinTone: "medium",
       },
       voiceSettings: {
-        provider: "native",
+        provider: "vynaa",
         elevenLabsApiKey: "",
         customVoiceId: "",
         sumoPodApiKey: "",
@@ -130,9 +131,9 @@ export const useAppStore = create<AppState>()(
         vynaaVoiceId: "aura-asteria-en",
       },
       aiSettings: {
-        provider: "gemini",
+        provider: "sumopod",
         sumoPodApiKey: "",
-        sumoPodModelId: "gpt-4o",
+        sumoPodModelId: "gpt-4o-mini",
         imageProvider: "vynaa",
         vynaaImageMode: "maker",
       },

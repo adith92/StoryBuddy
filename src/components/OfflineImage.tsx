@@ -5,6 +5,10 @@ export const OfflineImage: React.FC<{ cacheKey: string; prompt?: string; seed?: 
   const [hasError, setHasError] = React.useState(false);
   const offlineSrc = useOfflineImage(cacheKey, prompt, seed);
   
+  React.useEffect(() => {
+    setHasError(false);
+  }, [cacheKey, prompt, seed]);
+  
   if (hasError || !offlineSrc) {
     return <div className={`bg-slate-200 animate-pulse flex flex-col items-center justify-center text-slate-400 ${className}`}><span className="text-xs">{offlineSrc ? 'Image Load Error' : 'Generating...'}</span></div>;
   }

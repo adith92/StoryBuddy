@@ -10,6 +10,14 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
   const [activeTab, setActiveTab] = useState("progress");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isCheckingApi, setIsCheckingApi] = useState(false);
+  const [healthInfo, setHealthInfo] = useState<any>({});
+
+  React.useEffect(() => {
+    fetch("/api/health")
+      .then(res => res.json())
+      .then(data => setHealthInfo(data))
+      .catch(e => console.error(e));
+  }, []);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -18,18 +26,16 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
 
   const checkTextAPI = async () => {
     setIsCheckingApi(true);
-    const baseUrl = aiSettings.provider === 'custom' && aiSettings.customBaseUrl ? aiSettings.customBaseUrl : "https://ai.sumopod.com/v1";
     try {
-      const res = await fetch(`${baseUrl}/models`, {
-        headers: { "Authorization": `Bearer ${aiSettings.sumoPodApiKey}` }
-      });
-      if (res.ok) {
-        showToast(language === "id" ? "API AI Konek Dengan Baik! ✅" : "AI API Connected Successfully! ✅");
+      const res = await fetch("/api/sumopod/test");
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(language === "id" ? "API Konek Dengan Baik ✅" : "API Connected Successfully ✅");
       } else {
-        showToast(language === "id" ? `Gagal Terhubung AI API ❌` : `Failed to Connect AI API ❌`);
+        showToast(language === "id" ? `API Gagal: ${data.error || 'Unknown error'} ❌` : `API Failed: ${data.error || 'Unknown error'} ❌`);
       }
-    } catch (e) {
-      showToast(language === "id" ? "Gagal Terhubung ke AI API ❌" : "Failed to Connect to AI API ❌");
+    } catch (e: any) {
+      showToast(language === "id" ? `API Gagal: ${e.message} ❌` : `API Failed: ${e.message} ❌`);
     } finally {
       setIsCheckingApi(false);
     }
@@ -39,16 +45,33 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
   const checkVoiceAPI = async () => {
     setIsCheckingVoiceApi(true);
     try {
-      const res = await fetch("https://ai.sumopod.com/v1/models", {
-        headers: { "Authorization": `Bearer ${voiceSettings.sumoPodApiKey}` }
-      });
-      if (res.ok) {
-        showToast(language === "id" ? "Voice API Konek Dengan Baik! ✅" : "Voice API Connected Successfully! ✅");
+      let res;
+      if (voiceSettings.provider === "sumopod") {
+         res = await fetch("/api/sumopod/tts", {
+           method: "POST",
+           headers: {"Content-Type": "application/json"},
+           body: JSON.stringify({ text: "Hello" })
+         });
+      } else if (voiceSettings.provider === "vynaa") {
+         res = await fetch("/api/vynaa/tts", {
+           method: "POST",
+           headers: {"Content-Type": "application/json"},
+           body: JSON.stringify({ text: "Hello The", voiceId: voiceSettings.vynaaVoiceId || "aura-asteria-en" })
+         });
       } else {
-        showToast(language === "id" ? `Gagal Terhubung Voice API ❌` : `Failed to Connect Voice API ❌`);
+         setIsCheckingVoiceApi(false);
+         showToast(language === "id" ? "Native tidak butuh API Key" : "Native does not need API Key");
+         return;
       }
-    } catch (e) {
-      showToast(language === "id" ? "Gagal Terhubung ke Voice API ❌" : "Failed to Connect to Voice API ❌");
+
+      if (res.ok) {
+        showToast(language === "id" ? "API Konek Dengan Baik ✅" : "API Connected Successfully ✅");
+      } else {
+        const errorText = await res.text();
+        showToast(language === "id" ? `API Gagal: ${errorText.slice(0, 50)} ❌` : `API Failed: ${errorText.slice(0, 50)} ❌`);
+      }
+    } catch (e: any) {
+      showToast(language === "id" ? `API Gagal: ${e.message} ❌` : `API Failed: ${e.message} ❌`);
     } finally {
       setIsCheckingVoiceApi(false);
     }
@@ -59,15 +82,16 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
   const checkVynaaAPI = async () => {
     setIsCheckingVynaaApi(true);
     try {
-      const res = await fetch("/api/vynaa/test");
+      const mode = aiSettings.vynaaImageMode || "maker";
+      const res = await fetch(`/api/vynaa/test?mode=${mode}`);
       const data = await res.json();
       if (res.ok && data.success) {
-        showToast(language === "id" ? "Vynaa API Konek Dengan Baik! ✅" : "Vynaa API Connected Successfully! ✅");
+        showToast(language === "id" ? "API Konek Dengan Baik ✅" : "API Connected Successfully ✅");
       } else {
-        showToast(language === "id" ? `Gagal Terhubung Vynaa API: ${data.error} ❌` : `Failed to Connect Vynaa API: ${data.error} ❌`);
+        showToast(language === "id" ? `API Gagal: ${data.error || 'Failed'} ❌` : `API Failed: ${data.error || 'Failed'} ❌`);
       }
     } catch (e: any) {
-      showToast(language === "id" ? `Gagal Terhubung ke Vynaa API ❌` : `Failed to Connect to Vynaa API ❌`);
+      showToast(language === "id" ? `API Gagal: ${e.message} ❌` : `API Failed: ${e.message} ❌`);
     } finally {
       setIsCheckingVynaaApi(false);
     }
@@ -342,17 +366,12 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
               )}
 
               {voiceSettings.provider === 'sumopod' && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">SumoPod API Key</label>
-                    <input 
-                      type="password"
-                      value={voiceSettings.sumoPodApiKey}
-                      onChange={(e) => setVoiceSettings({ sumoPodApiKey: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-indigo-500"
-                      placeholder="sk-..."
-                    />
-                  </div>
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 mt-4">
+                  {healthInfo.sumopodConfigured ? (
+                    <div className="bg-emerald-50 p-4 border border-emerald-200 rounded-xl mb-4">
+                      <p className="text-sm text-emerald-800 font-medium">Owner Default API: Active ✅</p>
+                    </div>
+                  ) : null}
 
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2">Voice / Model ID</label>
@@ -428,27 +447,34 @@ export const ParentPortal: React.FC<{ onViewChange: (view: "dashboard") => void 
 
                 {(aiSettings.provider === 'sumopod' || aiSettings.provider === 'custom') && (
                   <div className="space-y-4 animate-in fade-in slide-in-from-top-2 mt-4">
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">API Key</label>
-                      <input 
-                        type="password"
-                        value={aiSettings.sumoPodApiKey}
-                        onChange={(e) => setAiSettings({ sumoPodApiKey: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-indigo-500"
-                        placeholder="sk-..."
-                      />
-                    </div>
+                    {aiSettings.provider === 'sumopod' && healthInfo.sumopodConfigured ? (
+                      <div className="bg-emerald-50 p-4 border border-emerald-200 rounded-xl mb-4">
+                        <p className="text-sm text-emerald-800 font-medium">Owner Default API: Active ✅</p>
+                      </div>
+                    ) : null}
 
                     {aiSettings.provider === 'custom' && (
-                      <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Base URL</label>
-                        <input 
-                          type="text"
-                          value={aiSettings.customBaseUrl || ""}
-                          onChange={(e) => setAiSettings({ customBaseUrl: e.target.value })}
-                          className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-indigo-500"
-                          placeholder="https://api.openai.com/v1"
-                        />
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">API Key</label>
+                          <input 
+                            type="password"
+                            value={aiSettings.sumoPodApiKey}
+                            onChange={(e) => setAiSettings({ sumoPodApiKey: e.target.value })}
+                            className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-indigo-500"
+                            placeholder="sk-..."
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Base URL</label>
+                          <input 
+                            type="text"
+                            value={aiSettings.customBaseUrl || ""}
+                            onChange={(e) => setAiSettings({ customBaseUrl: e.target.value })}
+                            className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-indigo-500"
+                            placeholder="https://api.openai.com/v1"
+                          />
+                        </div>
                       </div>
                     )}
 

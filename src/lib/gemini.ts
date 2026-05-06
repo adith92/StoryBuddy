@@ -1,8 +1,12 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import { Story, StoryPage, Avatar, AppLanguage, useAppStore } from "../store";
 import { generateImageWithVynaa } from "./vynaa";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Fallback image handling
+function getPollinationsFallback(prompt: string, seed?: string) {
+  const numSeed = seed ? Array.from(seed).reduce((acc, char) => acc + char.charCodeAt(0), 0) : Date.now();
+  const safePrompt = (prompt + " 2d vector art children style").slice(0, 800);
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(safePrompt)}?width=800&height=600&nologo=true&seed=${numSeed}`;
+}
 
 export async function generateImage(prompt: string, seed?: string): Promise<string> {
   const { aiSettings } = useAppStore.getState();
@@ -12,67 +16,43 @@ export async function generateImage(prompt: string, seed?: string): Promise<stri
       return await generateImageWithVynaa(prompt, aiSettings.vynaaImageMode, seed);
     } catch (error) {
       console.warn("Failed to generate image using Vynaa, falling back to Pollinations directly.", error);
-      const numSeed = seed ? Array.from(seed).reduce((acc, char) => acc + char.charCodeAt(0), 0) : Date.now();
-      const safePrompt = (prompt + " 2d vector art children style").slice(0, 800);
-      return `https://image.pollinations.ai/prompt/${encodeURIComponent(safePrompt)}?width=800&height=600&nologo=true&seed=${numSeed}`;
+      return getPollinationsFallback(prompt, seed);
     }
   }
 
   // GEMINI FALLBACK
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: {
-        parts: [
-          { text: prompt + " Bright, colorful, 2D vector children's book illustration style." }
-        ]
-      }
+    const res = await fetch("/api/gemini/generate-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: prompt + " Bright, colorful, 2D vector children's book illustration style." })
     });
-
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
-      }
-    }
-    throw new Error("No image generated.");
+    const data = await res.json();
+    if (res.ok && data.url) return data.url;
+    throw new Error(data.error || "Failed");
   } catch (error: any) {
-    const errorMessage = error?.message || "";
-    if (errorMessage.includes("429") || errorMessage.includes("RESOURCE_EXHAUSTED") || errorMessage.includes("quota")) {
-      console.warn("Quota exceeded for Gemini Image API, falling back to Pollinations.");
-    } else {
-      console.warn("Failed to generate image using Gemini, falling back to Pollinations.");
-    }
-    const numSeed = seed ? Array.from(seed).reduce((acc, char) => acc + char.charCodeAt(0), 0) : Date.now();
-    const safePrompt = (prompt + " 2d vector art children style").slice(0, 800);
-    return `https://image.pollinations.ai/prompt/${encodeURIComponent(safePrompt)}?width=800&height=600&nologo=true&seed=${numSeed}`;
+    console.warn("Failed to generate image using Gemini, falling back to Pollinations.", error);
+    return getPollinationsFallback(prompt, seed);
   }
 }
 
 export async function cartoonifyPhoto(fileData: string, mimeType: string): Promise<string> {
-  // Convert real photo to cartoon style avatar based on user's child's photo
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-image',
-    contents: {
-      parts: [
-        {
-          inlineData: {
-            data: fileData.split(',')[1] || fileData,
-            mimeType: mimeType,
-          },
-        },
-        {
-          text: 'Turn this photo into a cute, bright, colorful 2D vector cartoon avatar suitable for a children\'s book main character. White background.',
-        },
-      ],
-    },
+  const res = await fetch("/api/gemini/cartoonify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fileData: fileData.split(',')[1] || fileData, mimeType })
   });
+  const data = await res.json();
+  if (res.ok && data.url) return data.url;
+  throw new Error(data.error || "No cartoon image generated.");
+}
 
-  for (const part of response.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData) {
-      return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
-    }
-  }
-  throw new Error("No cartoon image generated.");
+function cleanJson(text: string) {
+  let c = text.trim();
+  if (c.startsWith("```json")) c = c.slice(7);
+  else if (c.startsWith("```")) c = c.slice(3);
+  if (c.endsWith("```")) c = c.slice(0, -3);
+  return c.trim();
 }
 
 export async function generateNewStory(theme: string, character: string, isInteractive: boolean, avatar: Avatar, language: AppLanguage): Promise<Story> {
@@ -85,7 +65,7 @@ export async function generateNewStory(theme: string, character: string, isInter
 
   const prompt = `Write a short, engaging children's story (for ages 4-8) in ${languageName} about a ${character} related to the theme "${theme}". 
   Use very simple words suitable for a 4-year-old.
-  ${avatarDesc} (Always include these character visual traits in the illustrationPrompt for every page to ensure consistency).
+  ${avatarDesc}
   ${rules}
   
   For each page, also provide a highly descriptive prompt for an AI image generator to create an illustration for that page.
@@ -94,17 +74,16 @@ export async function generateNewStory(theme: string, character: string, isInter
   const { aiSettings } = useAppStore.getState();
   let rawData: any = {};
 
-  if ((aiSettings.provider === 'sumopod' || aiSettings.provider === 'custom') && aiSettings.sumoPodApiKey) {
+  if (aiSettings.provider === 'sumopod' || aiSettings.provider === 'custom') {
     const jsonSchemaInstructions = `You MUST return a JSON object with this exact structure, containing no markdown formatting outside the JSON: { "title": "string", "genre": "string", "pages": [{ "text": "string", "illustrationPrompt": "string", "choices": ["string", "string"] }] }`;
-    const baseUrl = aiSettings.provider === 'custom' && aiSettings.customBaseUrl ? aiSettings.customBaseUrl : "https://ai.sumopod.com/v1";
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    
+    // We proxy through our backend instead of exposing keys to frontend. If it fails, error will bubble up.
+    // Assuming backend falls back to owner keys if user didn't provide custom keys
+    const res = await fetch("/api/sumopod/chat", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${aiSettings.sumoPodApiKey}`
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: aiSettings.sumoPodModelId || "gpt-4o",
+        model: aiSettings.sumoPodModelId || "gpt-4o-mini",
         messages: [
           { role: "system", content: `You are a creative children's book author writing in ${languageName}. Your stories are engaging, safe, positive, and use simple language for young children. ${jsonSchemaInstructions}` },
           { role: "user", content: prompt }
@@ -113,63 +92,59 @@ export async function generateNewStory(theme: string, character: string, isInter
       })
     });
 
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`SumoPod API error: ${err}`);
-    }
-
-    const data = await response.json();
-    rawData = JSON.parse(data.choices[0].message.content);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to generate story");
+    
+    rawData = JSON.parse(cleanJson(data.content));
   } else {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
+    // gemini fallback
+    const res = await fetch("/api/gemini/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt,
         systemInstruction: `You are a creative children's book author writing in ${languageName}. Your stories are engaging, safe, positive, and use simple language for young children.`,
         responseSchema: {
-          type: Type.OBJECT,
+          type: "OBJECT",
           properties: {
-            title: { type: Type.STRING },
-            genre: { type: Type.STRING },
+            title: { type: "STRING" },
+            genre: { type: "STRING" },
             pages: {
-              type: Type.ARRAY,
+              type: "ARRAY",
               items: {
-                type: Type.OBJECT,
+                type: "OBJECT",
                 properties: {
-                  text: {
-                    type: Type.STRING,
-                    description: "The paragraph to be read on this page",
-                  },
-                  illustrationPrompt: {
-                    type: Type.STRING,
-                    description: "Prompt for the AI image generator.",
-                  },
+                  text: { type: "STRING", description: "The paragraph to be read on this page" },
+                  illustrationPrompt: { type: "STRING", description: "Prompt for the AI image generator." },
                   choices: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING },
-                    description: "Choices in the same language as the story.",
+                    type: "ARRAY",
+                    items: { type: "STRING" },
+                    description: "Choices in the same language as the story."
                   }
                 },
-                required: ["text", "illustrationPrompt"],
-              },
-            },
+                required: ["text", "illustrationPrompt"]
+              }
+            }
           },
-          required: ["title", "genre", "pages"],
-        },
-      },
+          required: ["title", "genre", "pages"]
+        }
+      })
     });
-
-    rawData = JSON.parse(response.text?.trim() || "{}");
+    
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to generate story");
+    rawData = JSON.parse(cleanJson(data.content || "{}"));
   }
 
   try {
+    if (!rawData.pages || !Array.isArray(rawData.pages)) throw new Error("Invalid generated story format");
+    
     const story: Story = {
       id: crypto.randomUUID(),
       title: rawData.title || (language === "id" ? "Cerita Baru" : "New Story"),
       genre: rawData.genre || (language === "id" ? "Petualangan" : "Adventure"),
       isInteractive: isInteractive,
-      pages: (rawData.pages || []).map((p: any) => ({
+      pages: rawData.pages.map((p: any) => ({
         id: crypto.randomUUID(),
         text: p.text,
         illustrationPrompt: p.illustrationPrompt,
@@ -177,9 +152,9 @@ export async function generateNewStory(theme: string, character: string, isInter
       })),
     };
     return story;
-  } catch (error) {
-    console.error("Failed to parse story generation response.", error);
-    throw new Error("Could not generate story.");
+  } catch (error: any) {
+    console.error("Failed to parse story:", error);
+    throw new Error(error.message || "Could not generate story.");
   }
 }
 
@@ -205,17 +180,13 @@ export async function generateNextPage(story: Story, choice: string, avatar: Ava
   const { aiSettings } = useAppStore.getState();
   let rawData: any = {};
 
-  if ((aiSettings.provider === 'sumopod' || aiSettings.provider === 'custom') && aiSettings.sumoPodApiKey) {
+  if (aiSettings.provider === 'sumopod' || aiSettings.provider === 'custom') {
     const jsonSchemaInstructions = `You MUST return a JSON object with this exact structure, containing no markdown formatting outside the JSON: { "text": "string", "illustrationPrompt": "string", "choices": ["string", "string"] }`;
-    const baseUrl = aiSettings.provider === 'custom' && aiSettings.customBaseUrl ? aiSettings.customBaseUrl : "https://ai.sumopod.com/v1";
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    const res = await fetch("/api/sumopod/chat", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${aiSettings.sumoPodApiKey}`
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: aiSettings.sumoPodModelId || "gpt-4o",
+        model: aiSettings.sumoPodModelId || "gpt-4o-mini",
         messages: [
           { role: "system", content: `You are a creative children's book author writing in ${languageName}. Your stories are engaging, safe, positive, and simple. ${jsonSchemaInstructions}` },
           { role: "user", content: prompt }
@@ -223,37 +194,33 @@ export async function generateNextPage(story: Story, choice: string, avatar: Ava
         response_format: { type: "json_object" }
       })
     });
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`SumoPod API error: ${err}`);
-    }
-
-    const data = await response.json();
-    rawData = JSON.parse(data.choices[0].message.content);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed");
+    rawData = JSON.parse(cleanJson(data.content));
   } else {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
+    const res = await fetch("/api/gemini/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt,
         systemInstruction: `You are a creative children's book author writing in ${languageName}. Your stories are engaging, safe, positive, and simple.`,
         responseSchema: {
-          type: Type.OBJECT,
+          type: "OBJECT",
           properties: {
-            text: { type: Type.STRING },
-            illustrationPrompt: { type: Type.STRING },
+            text: { type: "STRING" },
+            illustrationPrompt: { type: "STRING" },
             choices: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
+              type: "ARRAY",
+              items: { type: "STRING" },
             }
           },
-          required: ["text", "illustrationPrompt"],
-        },
-      },
+          required: ["text", "illustrationPrompt"]
+        }
+      })
     });
-
-    rawData = JSON.parse(response.text?.trim() || "{}");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed");
+    rawData = JSON.parse(cleanJson(data.content || "{}"));
   }
 
   try {

@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { useAppStore } from "../store";
 import { useAudioContext } from "../lib/audio";
-import { ArrowLeft, Play, Square, Mic, StopCircle, Loader2, Sparkles, X } from "lucide-react";
+import { Play, Square, X, Sparkles } from "lucide-react";
 import confetti from "canvas-confetti";
 import { generateNextPage } from "../lib/gemini";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import { OfflineImage } from "./OfflineImage";
 import { LoadingBar } from "./LoadingBar";
 
 export const StoryReader: React.FC<{ onViewChange: (view: "dashboard" | "generator" | "reader") => void }> = ({ onViewChange }) => {
-  const { currentStory, currentPageIndex, setCurrentPageIndex, updateStory, addPoints, addRecording, points, avatar, language, setLanguage, bgMusicEnabled } = useAppStore();
-  const { speak, isSpeaking, stopSpeaking, startRecording, stopRecording, isRecording } = useAudioContext();
+  const { currentStory, currentPageIndex, setCurrentPageIndex, updateStory, addPoints, avatar, language, setLanguage, bgMusicEnabled } = useAppStore();
+  const { speak, isSpeaking, stopSpeaking } = useAudioContext();
   
   const [hasFinishedStory, setHasFinishedStory] = useState(false);
   const [isGeneratingNext, setIsGeneratingNext] = useState(false);
@@ -28,6 +28,12 @@ export const StoryReader: React.FC<{ onViewChange: (view: "dashboard" | "generat
   }, [stopSpeaking]);
 
   if (!currentStory) return null;
+
+  // Add guard for out of range index
+  if (currentPageIndex < 0 || currentPageIndex >= currentStory.pages.length) {
+    setCurrentPageIndex(0);
+    return null; // Will render on next tick
+  }
 
   const page = currentStory.pages[currentPageIndex];
   const isLastPage = currentPageIndex === currentStory.pages.length - 1;
@@ -75,7 +81,10 @@ export const StoryReader: React.FC<{ onViewChange: (view: "dashboard" | "generat
 
   const handleFinishStory = () => {
     setHasFinishedStory(true);
-    addPoints(50);
+    if (!currentStory.completedAt) {
+      addPoints(50);
+      updateStory(currentStory.id, { completedAt: Date.now() });
+    }
     confetti({
       particleCount: 150,
       spread: 70,

@@ -3,14 +3,28 @@ import { get, set, del } from 'idb-keyval';
 import { Story } from '../store';
 import { generateImage } from './gemini';
 
+async function fetchImageToBlob(url: string): Promise<Blob> {
+  if (url.startsWith('data:')) {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    if (blob.size === 0 || !blob.type.startsWith('image/')) throw new Error("Invalid base64 image data");
+    return blob;
+  }
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch image HTTP URL");
+  const blob = await res.blob();
+  if (blob.size === 0 || !blob.type.startsWith('image/')) throw new Error("Fetched url is not a valid image");
+  return blob;
+}
+
 export async function downloadStoryImages(story: Story, onProgress?: (progress: number) => void): Promise<void> {
   const tasks = [];
   tasks.push(async () => {
     const key = `cover-${story.id}`;
     if (!(await get(key))) {
       try {
-        const dataUrl = await generateImage(story.title + " children story book cover", story.id);
-        await set(key, await (await fetch(dataUrl)).blob());
+        const url = await generateImage(story.title + " children story book cover", story.id);
+        await set(key, await fetchImageToBlob(url));
       } catch (e) { console.warn("Failed to download cover image", e); }
     }
   });
@@ -20,8 +34,8 @@ export async function downloadStoryImages(story: Story, onProgress?: (progress: 
       const key = `page-${p.id}`;
       if (!(await get(key))) {
         try {
-          const dataUrl = await generateImage(p.illustrationPrompt, story.id);
-          await set(key, await (await fetch(dataUrl)).blob());
+          const url = await generateImage(p.illustrationPrompt, story.id);
+          await set(key, await fetchImageToBlob(url));
         } catch (e) { console.warn("Failed to download page image", e); }
       }
     });
@@ -62,20 +76,17 @@ export function useOfflineImage(cacheKey: string, prompt?: string, seed?: string
             // It's a base64 from proxy, avoid double-fetching if not needed
             setSrc(dataUrl);
             try {
-               const res = await fetch(dataUrl);
-               blob = await res.blob();
+               blob = await fetchImageToBlob(dataUrl);
                await set(cacheKey, blob);
             } catch (ignore) {}
             return;
           }
 
           try {
-            const res = await fetch(dataUrl);
-            if (!res.ok) throw new Error("Fetch failed for image URL");
-            blob = await res.blob();
+            blob = await fetchImageToBlob(dataUrl);
             await set(cacheKey, blob);
           } catch (e) {
-            console.warn("Failed to save generated image to offline cache (possibly CORS), falling back to direct URL", e);
+            console.warn("Failed to save generated image to offline cache, falling back to direct URL", e);
             if (!isMounted) return;
             setSrc(dataUrl);
             return;

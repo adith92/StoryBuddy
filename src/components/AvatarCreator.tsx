@@ -97,9 +97,11 @@ export const AvatarCreator: React.FC<{ onViewChange: (view: "dashboard" | "paren
         <div className="bg-white rounded-[48px] p-8 shadow-xl border-8 border-white flex flex-col items-center justify-center relative overflow-hidden">
              <div className="absolute inset-0 bg-gradient-to-br from-green-200 to-blue-200 opacity-50"></div>
              <motion.div 
-                className="relative z-10 w-64 h-64 bg-white rounded-full p-4 shadow-2xl mb-6"
-                animate={{ y: [0, -10, 0] }}
-                transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                className="relative z-10 w-64 h-64 bg-white rounded-full p-4 shadow-2xl mb-6 cursor-pointer"
+                animate={{ y: [0, -10, 0], rotate: [0, 2, -2, 0] }}
+                transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
+                whileHover={{ scale: 1.05, rotate: 5 }}
+                whileTap={{ scale: 0.95, rotate: -5 }}
              >
                 {isUploading ? (
                   <div className="flex bg-slate-100 rounded-full w-full h-full items-center justify-center">
